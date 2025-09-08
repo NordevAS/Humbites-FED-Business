@@ -1,0 +1,99 @@
+:root {
+    --card-bg: var(--Hum-L-Grey);
+    --icon-full-bg: var(--Hum-Red);
+    --icon-empty-border: var(--Hum-Black);
+    --icon-final-border: var(--Hum-Red);
+    --round-icon-border: var(--Hum-Orange);
+    --round-icon-text: var(--Hum-Black);
+    --round-icon-bg-last: var(--Hum-Orange);
+    --round-icon-text-last: var(--Hum-White);
+    --orange-text: var(--Hum-Orange);
+  }
+  
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --card-bg: var(--Hum-D-Grey);
+      --icon-full-bg: var(--Hum-Orange);
+      --icon-empty-border: var(--Hum-White);
+      --icon-final-border: var(--Hum-Orange);
+      --round-icon-border: var(--Hum-Red);
+      --round-icon-text: var(--Hum-White);
+      --round-icon-bg-last: var(--Hum-Red);
+      --round-icon-text-last: var(--Hum-Black);
+      --orange-text: var(--Hum-Red);
+    }
+  }
+  
+  #Card-bg-Loyal {
+    background-color: var(--card-bg);
+    text-align: center;
+    width: 317px;
+    height: 220px;
+    border-radius: 11px;
+    padding: 10px 15px;
+  }
+  
+  #icon-holders {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+    padding: 5px;
+    justify-items: center;
+    align-items: center;
+    margin: 0 auto;
+    width: 100%;
+    gap: 6px 5px;
+    height: 125px;
+    max-width: 100%;
+    grid-auto-rows: minmax(50px, auto);
+  }
+  
+  .loyal-icon {
+    width: 125px;
+    height: 125px;
+  }
+  
+  .loyal-icon-full {
+    background-color: var(--icon-full-bg);
+  }
+  
+  .loyal-icon-empty {
+    border: 3px dotted var(--icon-empty-border);
+  }
+  
+  .loyal-icon-final {
+    border: 3px dotted var(--icon-final-border);
+  }
+  
+  .roundIcon {
+    width: 50px;
+    height: 50px;
+    border-radius: 125px;
+    border: 3px dashed var(--round-icon-border);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: var(--round-icon-text);
+    font-size: 21px;
+  }
+  
+  .roundIcon:last-child {
+    background-color: var(--round-icon-bg-last);
+    color: var(--round-icon-text-last);
+    font-size: 16px;
+  }
+  
+  .placeName {
+    font-size: 18px;
+    margin: 0;
+    font-weight: 900;
+  }
+  
+  .LoyaltyName {
+    font-size: 21px;
+    margin: 0;
+  }
+  
+  .orangeTxt {
+    color: var(--orange-text);
+  }
+  

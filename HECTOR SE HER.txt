@@ -1,0 +1,25 @@
+"use client"; // Needed for useState
+
+import { useState } from "react";
+import Userin from "./companypage/User_in/page";
+
+export default function Home() {
+  const [showUserin, setShowUserin] = useState(false);
+
+  if (showUserin) {
+    return <Userin />;
+  }
+
+  return (
+    <div>
+      <button onClick={() => setShowUserin(true)}>company site</button>
+      <h1>TEMP HER KAN MAN BYTTE SIDER</h1>
+      <button>
+        <a href="./userpage">user site</a>
+      </button>
+    </div>
+  );
+}
+
+
+denne koden blir jo glemt når vi loader en step opp

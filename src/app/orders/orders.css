@@ -1,0 +1,59 @@
+:root {
+    --bg-light: #FFFFFF;
+    --bg-dark: #323232;
+    --text-light: #232228;
+    --text-dark: #FFFFFF;
+    --highlight-light: var(--Hum-Orange);
+    --highlight-dark: var(--Hum-Orange);
+    --border-light: var(--Hum-BG-Dark);
+    --border-dark: var(--Hum-BG-Light);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: var(--bg-dark);
+        --text: var(--text-dark);
+        --highlight: var(--highlight-dark);
+        --border: var(--border-dark);
+    }
+}
+
+#OrderList {
+    width: 70%;
+}
+
+#OrderInfo {
+    border-left: 2px solid var(--border);
+    width: 20%;
+}
+
+#cardOrder {
+    background-color: var(--bg);
+    color: var(--highlight);
+    filter: drop-shadow(0px 4px 4px rgba(0, 0, 0, 0.15));
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    align-items: center;
+    height: 60px;
+    font-size: 19px;
+    border-radius: 28px;
+}
+
+#screen {
+    display: row;
+    min-height: 100vh;
+    min-width: 100vw;
+    padding-left: 349px;
+}
+
+@media (prefers-color-scheme: dark) {
+    #OrderInfo {
+        border-left: 2px solid var(--border);
+    }
+    #cardOrder {
+        background-color: var(--bg);
+        color: var(--highlight);
+        filter: drop-shadow(0px 4px 4px rgba(255, 255, 255, 0.15));
+    }
+}

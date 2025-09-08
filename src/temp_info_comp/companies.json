@@ -1,0 +1,16 @@
+{
+    "Leahs_Kebab": {
+        "name": "Leah's Kebab",
+        "login_key": "23bb2cpop4",
+        "password": "NamKebab",
+        "isProcessed": true,
+        "location": "Bergen"
+    },
+    "Sanders_suppe_kjøkken": {
+        "name": "Sanders Suppe Kjøkken",
+        "login_key": "582ght22jklo6",
+        "password": "pakketSander",
+        "isProcessed": false,
+        "location": "Drammen"
+    }
+}

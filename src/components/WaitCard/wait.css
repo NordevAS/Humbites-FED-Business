@@ -1,0 +1,21 @@
+#WaitCreate {
+    z-index: 20;
+    background-color: var(--Hum-Orange);
+    padding: 10px 20px;
+    text-align: center;
+    color: var(--Hum-White);
+    min-width: 500px;
+    width: auto; 
+    border-radius: 8px 30px; 
+}
+#clickable-link {
+    text-decoration: underline;
+    color: var(--Hum-L-Grey);
+    cursor: pointer;
+}
+#clickable-link:hover {
+    color: var(--Hum-D-Grey);
+}
+#clickable-link:active {
+    color: var(--Hum-Black);
+}

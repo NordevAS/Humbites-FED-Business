@@ -1,0 +1,26 @@
+[
+    {
+        "id": 0,
+        "company_name": "name1",
+        "description": "description1",
+        "banner": "something"
+    },
+    {
+        "id": 1,
+        "company_name": "name2",
+        "description": "description2",
+        "banner": "something"
+    },
+    {
+        "id": 2,
+        "company_name": "name3",
+        "description": "description3",
+        "banner": "something"
+    },
+    {
+        "id": 4,
+        "company_name": "name4",
+        "description": "description4",
+        "banner": "something"
+    }
+]

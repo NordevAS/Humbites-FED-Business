@@ -1,0 +1,25 @@
+:root {
+  /* Legacy variables - keep for backwards compatibility */
+  --Hum-Orange: #e3632d;
+  --Hum-White: #f6f6f6;
+  --Hum-Black: #000000;
+  --Hum-D-Grey: #959eb2;
+  --Hum-Red: #df2c2c;
+  --Hum-Yellow: #f47b0a;
+  --Hum-L-Grey: #ededed;
+  --Hum-L-White: #ffffff;
+}
+
+/* Utility Classes */
+.trans-p-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 19;
+  background-color: rgba(0, 0, 0, 0.627);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

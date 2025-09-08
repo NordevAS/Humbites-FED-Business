@@ -1,0 +1,95 @@
+/* Enable light-dark() CSS function */
+html {
+  color-scheme: light dark;
+}
+
+/**************************
+ * Core Theme Colors
+ **************************/
+:root {
+  /* Legacy color variables (for backwards compatibility) */
+  --background: #ffffff;
+  --foreground: #232228;
+
+  /* Base Colors */
+  --hum-white: #ffffff;
+  --hum-black: #1a1a1a;
+  --hum-primary: #e07342;
+  --hum-primary-dark: #c05a30;
+
+  /**************************
+   * Background Colors
+   **************************/
+  --hum-light-grey: light-dark(#f5f5f5, #1e1e1e);
+  --hum-dark-grey: #2b2b2b;
+  --hum-card-bg: light-dark(#ffffff, #2b2b2b);
+
+  /**************************
+   * Text Colors
+   **************************/
+  --hum-text: light-dark(#333333, #f0f0f0);
+  --hum-text-secondary: light-dark(#888888, #aaaaaa);
+
+  /**************************
+   * Graph Block Colors
+   **************************/
+  --hum-block-pink: #f2a6a6;
+  --hum-block-orange: #f2c9a6;
+  --hum-block-blue: #a6e0f2;
+  --hum-block-green: #c9f2c9;
+
+  /**************************
+   * Navigation Colors
+   **************************/
+  --nav-bg: light-dark(#ffffff, #2b2b2b);
+  --nav-text: #e07342;
+  --nav-border: #e07342;
+  --nav-shadow: rgba(0, 0, 0, 0.1);
+
+  /**************************
+   * Design Tokens
+   **************************/
+  --card-radius: 16px;
+  --card-padding: 24px;
+  --transition-time: 0.3s;
+  --card-shadow: 0 2px 10px var(--nav-shadow);
+  --hover-shadow: 0 4px 15px var(--nav-shadow);
+  --focus-ring: 0 0 0 2px var(--hum-primary);
+  --gap-small: 12px;
+  --gap-medium: 24px;
+  --gap-large: 36px;
+  --slider-track-bg: light-dark(#e0e0e0, #3a3a3a);
+
+  /* NavBar specific */
+  --navbar-width: 260px;
+  --nav-hover: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.1));
+  --mobile-navbar-height: 70px;
+  --hamburger-color: var(--hum-white);
+  --mobile-overlay: light-dark(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.7));
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #232228;
+    --foreground: #ffffff;
+  }
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  color: var(--foreground);
+  background: var(--background);
+  font-family: "Inter", BlinkMacSystemFont, system-ui, "Segoe UI", -apple-system,
+    sans-serif;
+  box-sizing: border-box;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Utility class */
+.text-balance {
+  text-wrap: balance;
+}

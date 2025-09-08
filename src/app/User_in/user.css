@@ -1,0 +1,229 @@
+/**************************
+ * Login Page Styles
+ * Uses variables from main.css
+ **************************/
+
+/*******************
+ * Base styles *
+ *******************/
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--hum-light-grey);
+  color: var(--hum-text);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  line-height: 1.5;
+}
+
+#page-cont {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: var(--gap-large);
+  border-top: 4px solid var(--hum-primary);
+}
+
+/*****************
+ * Navigation *
+ *****************/
+nav {
+  display: flex;
+  gap: 0;
+  margin-bottom: var(--gap-large);
+  border-bottom: 1px solid var(--hum-text-secondary);
+  width: 100%;
+  max-width: 500px;
+}
+
+nav button {
+  background: transparent;
+  border: none;
+  padding: var(--gap-medium) var(--gap-large);
+  cursor: pointer;
+  color: var(--hum-text-secondary);
+  font-family: inherit;
+  font-weight: 500;
+  font-size: var(--text-base);
+  position: relative;
+  border-bottom: 2px solid transparent;
+  transition: color var(--transition-time), border-color var(--transition-time);
+}
+
+nav button:hover {
+  color: var(--hum-text);
+}
+
+nav button:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+.active-tab {
+  color: var(--hum-primary);
+  border-bottom: 2px solid var(--hum-primary);
+}
+
+/*****************************
+ * Main form container *
+ *****************************/
+#input-sect {
+  background-color: var(--hum-card-bg);
+  width: 100%;
+  max-width: 500px;
+  padding: var(--gap-large);
+  border-left: 4px solid var(--hum-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+}
+
+#top-txt {
+  font-size: var(--text-xl);
+  margin-bottom: var(--gap-large);
+  color: var(--hum-text);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: var(--gap-small);
+}
+
+.chevron {
+  color: var(--hum-primary);
+  font-weight: 600;
+  font-size: var(--text-xl);
+}
+
+/*********************************
+ * Input fields styling *
+ *********************************/
+.input-field {
+  width: 100%;
+  min-height: 44px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--hum-primary);
+  color: var(--hum-text);
+  margin-bottom: var(--gap-medium);
+  padding: var(--gap-small) 4px;
+  font-family: inherit;
+  font-size: var(--text-base);
+  outline: none;
+}
+
+.input-field::placeholder {
+  color: var(--hum-text-secondary);
+}
+
+.input-field:focus,
+.input-field:focus-visible {
+  border-bottom: 2px solid var(--hum-primary);
+  box-shadow: var(--focus-ring);
+}
+
+/*********************************
+ * Labels for input fields *
+ *********************************/
+.field-label {
+  color: var(--hum-text);
+  font-size: var(--text-sm);
+  margin-bottom: var(--gap-small);
+  font-weight: 500;
+}
+
+/********************
+ * Submit button *
+ ********************/
+#submit-btn {
+  background: transparent;
+  color: var(--hum-primary);
+  width: auto;
+  padding: var(--gap-small) var(--gap-large);
+  min-height: 44px;
+  font-family: inherit;
+  font-weight: 500;
+  font-size: var(--text-base);
+  border: 1px solid var(--hum-primary);
+  cursor: pointer;
+  margin-top: var(--gap-medium);
+  align-self: flex-start;
+  transition: background-color var(--transition-time), color var(--transition-time);
+  border-radius: var(--card-radius);
+}
+
+#submit-btn:hover {
+  background: var(--hum-primary);
+  color: var(--hum-white);
+}
+
+#submit-btn:active {
+  background: var(--hum-primary-dark);
+}
+
+#submit-btn:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+/**********************
+ * Bottom sections *
+ **********************/
+#info-sect {
+  margin-top: var(--gap-large);
+  font-size: var(--text-sm);
+  color: var(--hum-text-secondary);
+  text-align: center;
+}
+
+#info-sect a {
+  color: var(--hum-primary);
+  text-decoration: none;
+}
+
+#info-sect a:hover {
+  text-decoration: underline;
+}
+
+#link-line {
+  margin-top: var(--gap-medium);
+  font-size: var(--text-sm);
+  color: var(--hum-text);
+  align-self: flex-start;
+}
+
+#link-line a {
+  color: var(--hum-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+#link-line a:hover {
+  text-decoration: underline;
+}
+
+/*********************************
+ * Responsive adjustments *
+ *********************************/
+@media (max-width: 768px) {
+  #page-cont {
+    padding: var(--gap-medium);
+  }
+  
+  #input-sect {
+    padding: var(--gap-medium);
+  }
+  
+  nav {
+    margin-bottom: var(--gap-medium);
+  }
+  
+  .input-field {
+    min-height: 44px;
+  }
+}
