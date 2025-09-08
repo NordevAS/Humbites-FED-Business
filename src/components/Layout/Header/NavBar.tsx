@@ -19,7 +19,7 @@ export default function NavBar() {
     <>
       <nav className="navbar">
         {/* Logo and home link */}
-        <Link href="/app" className="navbar-header-link">
+        <Link href="/" className="navbar-header-link">
           <div className="navbar-header">
             <Image
               src="/favicon.ico"
@@ -34,7 +34,7 @@ export default function NavBar() {
 
         {/* Navigation menu - toggles on mobile */}
         <div className={`navbar-links ${mobileMenuOpen ? "open" : ""}`}>
-          <Link href="/app" className={isActive("/app") ? "active" : ""}>
+          <Link href="/" className={isActive("/app") ? "active" : ""}>
             <button
               className="navbar-btn"
               onClick={() => setMobileMenuOpen(false)}>
@@ -44,7 +44,7 @@ export default function NavBar() {
           </Link>
 
           <Link
-            href="/app/setting"
+            href="/setting"
             className={isActive("/app/setting") ? "active" : ""}>
             <button
               className="navbar-btn"
@@ -55,7 +55,7 @@ export default function NavBar() {
           </Link>
 
           <Link
-            href="/app/orders"
+            href="/orders"
             className={isActive("/app/orders") ? "active" : ""}>
             <button
               className="navbar-btn"

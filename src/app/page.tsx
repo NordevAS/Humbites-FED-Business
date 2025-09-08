@@ -40,7 +40,7 @@ export default function CompanyHome() {
           <div className="dash-card create-card" id="card-create">
             <h2 className="section-title">Manage your menu</h2>
             {/* The corrected code for the menu manager button */}
-            <Link href="/app/menuManager" className="menu-manager-button">
+            <Link href="/menuManager" className="menu-manager-button">
               Menu Manager
             </Link>
           </div>
