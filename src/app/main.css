@@ -132,8 +132,9 @@ body {
 */
 #card-area {
   grid-row: span 3;
-  height: auto;
-  min-height: 100%;
+  height: fit-content;      
+  min-height: 280px; 
+  align-self: start;  
 }
 
 /**************************
