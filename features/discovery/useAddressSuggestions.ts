@@ -1,12 +1,17 @@
 'use client';
 import { useEffect, useState } from 'react';
 import type { AddressSearchResult } from '@/lib/places/search';
+import type { OsmAddressSearchResult } from '@/lib/places/osm-search';
 
 /** Query keys hide stale results immediately; abort also stops obsolete provider work. */
-export function useAddressSuggestions(query: string, enabled: boolean) {
+export function useAddressSuggestions(
+  query: string,
+  enabled: boolean,
+  provider: 'kartverket' | 'osm' = 'kartverket',
+) {
   const [result, setResult] = useState<{
     query: string;
-    value: AddressSearchResult;
+    value: AddressSearchResult | OsmAddressSearchResult;
   } | null>(null);
   const term = query.trim();
   useEffect(() => {
@@ -16,14 +21,18 @@ export function useAddressSuggestions(query: string, enabled: boolean) {
     const timer = setTimeout(async () => {
       const timeout = setTimeout(() => controller.abort(), 9000);
       try {
-        const response = await fetch('/api/places/search', {
-          method: 'POST',
-          credentials: 'same-origin',
-          signal: controller.signal,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: term }),
-        });
-        const value: AddressSearchResult = await response.json();
+        const response = await fetch(
+          provider === 'osm' ? '/api/places/osm-search' : '/api/places/search',
+          {
+            method: 'POST',
+            credentials: 'same-origin',
+            signal: controller.signal,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: term }),
+          },
+        );
+        const value: AddressSearchResult | OsmAddressSearchResult =
+          await response.json();
         if (!response.ok && value.status !== 'error')
           throw new Error('Search failed');
         if (current) setResult({ query: term, value });
@@ -34,19 +43,21 @@ export function useAddressSuggestions(query: string, enabled: boolean) {
             value: {
               status: 'error',
               message:
-                'Adressesøket er utilgjengelig. Bruk et eksempelsted eller velg et kartpunkt.',
+                provider === 'osm'
+                  ? 'OpenStreetMap-adressesøket er utilgjengelig. Prøv igjen eller velg et kartpunkt.'
+                  : 'Adressesøket er utilgjengelig. Bruk et eksempelsted eller velg et kartpunkt.',
             },
           });
       } finally {
         clearTimeout(timeout);
       }
-    }, 300);
+    }, 500);
     return () => {
       current = false;
       clearTimeout(timer);
       controller.abort();
     };
-  }, [term, enabled]);
+  }, [term, enabled, provider]);
   const value = enabled && result?.query === term ? result.value : null;
   return {
     suggestions: value?.status === 'ready' ? value.suggestions : [],

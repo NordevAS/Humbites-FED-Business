@@ -48,6 +48,13 @@ export interface EventLocation {
   coordinates?: Coordinates;
   source: 'manual' | 'mapbox' | 'preset' | 'map';
   geocodingStorage?: 'permanent';
+  addressDetails?: {
+    address: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+  };
 }
 
 export interface EventDetails {

@@ -57,6 +57,7 @@ function initialLocation(truck: TruckLocation | undefined): EventLocation {
 }
 
 function detailsFromLocation(location: EventLocation): LocationFields {
+  if (location.addressDetails) return location.addressDetails;
   const label = location.label.trim();
   const addressLabel = label.replace(/^Ved\s+/i, '');
   const match = /^(.*?),\s*(\d{4})\s+([^,]+?)(?:,\s*(.+))?$/.exec(addressLabel);
@@ -217,6 +218,7 @@ export function TruckLocationForm({
         location={location}
         onChange={chooseLocation}
         showPresets={false}
+        searchProvider="osm"
       />
       <TravelMap
         location={location}
