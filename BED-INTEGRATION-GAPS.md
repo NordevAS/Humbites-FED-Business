@@ -11,9 +11,9 @@ restarted/redeployed.
 | Dashboard need | Frontend request / expected contract | Current BED state |
 | --- | --- | --- |
 | Owner sign-in | `GET /v1/auth/csrf`, then `POST /v1/auth/login`; session verification at `GET /v1/auth/login-success` | Session CSRF and profile response are implemented in BED PR #218. |
-| Dashboard summary | `GET /v1/me/businesses/:businessId/foodtrucks/:foodtruckId/overview` | No route or controller. |
-| Booking settings | `GET` and `PATCH /v1/me/businesses/:businessId/foodtrucks/:foodtruckId/booking-settings` | No route or controller. |
-| Schedule | `GET`/`PUT .../schedule` and `GET .../schedule-preview` | No routes or controllers. |
+| Dashboard summary | `GET /v1/me/businesses/:businessId/foodtrucks/:foodtruckId/overview` | Implemented; returns zero counts until BED booking persistence is implemented. |
+| Booking settings | `GET` and `PATCH /v1/me/businesses/:businessId/foodtrucks/:foodtruckId/booking-settings` | Implemented and persisted per foodtruck. |
+| Schedule | `PUT .../booking-settings/schedule` and `POST .../schedule-preview` | Implemented; preview currently has no persisted bookings to show as reservations or conflicts. |
 | Menu read and assignment | `GET .../menu`, `GET .../menu-options`, and category CRUD at `.../menu-categories` | Implemented in BED PR #218. Menu writes now accept `enabled` and `allergenIds`; categories are scoped to the business. |
 | Booking inbox and decisions | `GET .../bookings` with `page`, `limit`, `status`, `q`; booking detail and `POST .../:bookingId/{accept,decline,cancel}` | Routes exist, but list returns an empty stub and detail/decision controllers return placeholder data. Pagination and search are not implemented. |
 | Truck images | `GET/POST .../media/businesses/:businessId/foodtrucks/:foodtruckId/images`, plus delete and upload completion paths | BED has an authenticated upload route under `/me/businesses/.../foodtrucks/.../images`, but not the media API contract used by FED-Business (list, delete, menu-image upload, completion response and same-origin upload URL). |

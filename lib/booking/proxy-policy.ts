@@ -83,6 +83,10 @@ export function resolveTarget(method: string, path: string): Target | null {
     ['GET', 'PATCH'].includes(method)
   )
     return { path: `${base}/booking-settings`, auth: 'owner' };
+  if (section === 'booking-settings' && item === 'schedule' && method === 'PUT')
+    return { path: `${base}/booking-settings/schedule`, auth: 'owner' };
+  if (section === 'schedule-preview' && method === 'POST' && !item)
+    return { path: `${base}/schedule-preview`, auth: 'owner' };
   if (
     section === 'schedule' &&
     !item &&
