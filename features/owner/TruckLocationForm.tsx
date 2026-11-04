@@ -6,6 +6,7 @@ import { isCoordinates } from '@/domain';
 import { PlaceAutocomplete } from '@/features/discovery/PlaceAutocomplete';
 import { TravelMap } from '@/components/map/TravelMap';
 import { api, errorMessage } from '@/lib/booking/client';
+import styles from './TruckLocationForm.module.css';
 
 type TruckLocation = {
   address?: string | null;
@@ -145,8 +146,10 @@ export function TruckLocationForm({
   const [baseline, setBaseline] = useState(initialValue);
   const [busy, setBusy] = useState(false);
   const [resolvingLocation, setResolvingLocation] = useState(false);
+  const [fieldsUpdating, setFieldsUpdating] = useState(false);
   const [error, setError] = useState('');
   const callbacks = useRef({ onDirtyChange, onBusyChange });
+  const previousFields = useRef(JSON.stringify(fields));
   callbacks.current = { onDirtyChange, onBusyChange };
   const point = location.coordinates;
   const currentValue = JSON.stringify({
@@ -157,6 +160,14 @@ export function TruckLocationForm({
   const dirty = currentValue !== baseline;
 
   useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
+  useEffect(() => {
+    const serialized = JSON.stringify(fields);
+    if (previousFields.current === serialized) return;
+    previousFields.current = serialized;
+    setFieldsUpdating(true);
+    const timer = setTimeout(() => setFieldsUpdating(false), 600);
+    return () => clearTimeout(timer);
+  }, [fields]);
   useEffect(
     () => onBusyChange?.(busy || resolvingLocation),
     [busy, resolvingLocation, onBusyChange],
@@ -278,7 +289,10 @@ export function TruckLocationForm({
         onLocationLookupPending={setResolvingLocation}
         compact
       />
-      <div className="form-grid">
+      <div
+        className={`form-grid ${styles.fields} ${busy || resolvingLocation ? styles.fieldsLoading : ''} ${fieldsUpdating ? styles.fieldsUpdating : ''}`}
+        aria-busy={busy || resolvingLocation}
+      >
         <label className="field">
           <span>Adresse</span>
           <input readOnly value={fields.address ?? ''} />

@@ -106,12 +106,11 @@ export function TravelMap({
     ),
   );
   const [reverseMessage, setReverseMessage] = useState('');
+  const [locating, setLocating] = useState(false);
   const pendingPoint = useRef<EventLocation['coordinates']>(undefined);
-  const cancelReverse = () => {
-    mapSelection.cancel();
-    pendingPoint.current = undefined;
-    setReverseMessage('');
-  };
+  const previewMarker = useRef<mapboxgl.Marker | null>(null);
+  const locationAction = useRef(0);
+  const locationLabel = useRef(location?.label);
   const catalogue = useMemo(
     () => (truck ? [truck] : (trucks ?? [])),
     [truck, trucks],
@@ -135,7 +134,104 @@ export function TravelMap({
   const onLocationLookupPendingRef = useRef(onLocationLookupPending);
   const longitude = location?.coordinates?.longitude;
   const latitude = location?.coordinates?.latitude;
-  useEffect(() => () => mapSelection.cancel(), [mapSelection]);
+  const clearPreviewMarker = () => {
+    previewMarker.current?.remove();
+    previewMarker.current = null;
+  };
+  const finishPendingLookup = (pending: boolean) => {
+    onLocationLookupPendingRef.current?.(pending);
+    if (!pending) {
+      pendingPoint.current = undefined;
+      clearPreviewMarker();
+    }
+  };
+  const cancelReverse = () => {
+    locationAction.current++;
+    mapSelection.cancel();
+    pendingPoint.current = undefined;
+    setLocating(false);
+    finishPendingLookup(false);
+    setReverseMessage('');
+  };
+  const previewPoint = (point: { longitude: number; latitude: number }) => {
+    const instance = map.current;
+    const gl = library.current;
+    if (!instance || !gl || mapState !== 'ready') return;
+    clearPreviewMarker();
+    const element = document.createElement('div');
+    element.className = `${styles.eventMarker} ${styles.pendingMarker}`;
+    element.textContent = '●';
+    element.setAttribute('aria-label', 'Ny posisjon som kontrolleres');
+    previewMarker.current = new gl.Marker({ element, anchor: 'bottom' })
+      .setLngLat([point.longitude, point.latitude])
+      .addTo(instance);
+    instance.flyTo({
+      center: [point.longitude, point.latitude],
+      zoom: Math.max(instance.getZoom(), 13),
+      duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        ? 0
+        : 350,
+    });
+  };
+  const startPointLookup = (point: { longitude: number; latitude: number }) => {
+    locationAction.current++;
+    setLocating(false);
+    pendingPoint.current = point;
+    previewPoint(point);
+    void mapSelection.select(
+      point,
+      (next) => onLocationRef.current?.(next),
+      setReverseMessage,
+      finishPendingLookup,
+    );
+  };
+  const useMyPosition = () => {
+    if (!navigator.geolocation) {
+      setReverseMessage('Denne nettleseren støtter ikke posisjonsdeling.');
+      return;
+    }
+    cancelReverse();
+    const action = ++locationAction.current;
+    setLocating(true);
+    onLocationLookupPendingRef.current?.(true);
+    setReverseMessage('Finner posisjonen din …');
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        if (action !== locationAction.current) return;
+        setLocating(false);
+        startPointLookup({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+      },
+      (error) => {
+        if (action !== locationAction.current) return;
+        setLocating(false);
+        onLocationLookupPendingRef.current?.(false);
+        setReverseMessage(
+          error.code === error.PERMISSION_DENIED
+            ? 'Posisjonstilgang ble ikke gitt. Du kan søke etter adressen eller velge punkt på kartet.'
+            : 'Posisjonen kunne ikke hentes. Prøv igjen eller velg punkt på kartet.',
+        );
+      },
+      { enableHighAccuracy: true, maximumAge: 30_000, timeout: 12_000 },
+    );
+  };
+  useEffect(
+    () => () => {
+      mapSelection.cancel();
+      clearPreviewMarker();
+    },
+    [mapSelection],
+  );
+  useEffect(() => {
+    if (locationLabel.current !== location?.label && locating) {
+      locationAction.current++;
+      setLocating(false);
+      onLocationLookupPendingRef.current?.(false);
+    }
+    locationLabel.current = location?.label;
+  }, [location?.label, locating]);
   useEffect(() => {
     const pending = pendingPoint.current;
     if (
@@ -144,7 +240,7 @@ export function TravelMap({
     ) {
       mapSelection.cancel();
       pendingPoint.current = undefined;
-      onLocationLookupPendingRef.current?.(false);
+      finishPendingLookup(false);
       setReverseMessage('');
     }
   }, [longitude, latitude, mapSelection]);
@@ -242,13 +338,7 @@ export function TravelMap({
             longitude: event.lngLat.lng,
             latitude: event.lngLat.lat,
           };
-          pendingPoint.current = point;
-          void mapSelection.select(
-            point,
-            (next) => onLocationRef.current?.(next),
-            setReverseMessage,
-            (pending) => onLocationLookupPendingRef.current?.(pending),
-          );
+          startPointLookup(point);
         });
         observer = new ResizeObserver(() => instance?.resize());
         observer.observe(target);
@@ -423,6 +513,24 @@ export function TravelMap({
         </div>
       )}
 
+      {onLocationChange && reverseProvider === 'osm' && (
+        <div className={styles.mapActions}>
+          <button
+            type="button"
+            className={styles.locateButton}
+            onClick={useMyPosition}
+            disabled={locating || mapState !== 'ready'}
+          >
+            <span aria-hidden="true">◎</span>
+            {locating
+              ? 'Finner posisjonen …'
+              : mapState !== 'ready'
+                ? 'Venter på kartet …'
+                : 'Bruk min posisjon'}
+          </button>
+        </div>
+      )}
+
       <div className={styles.mapFrame}>
         <div
           ref={container}
@@ -488,9 +596,15 @@ export function TravelMap({
         ) : (
           <a href="https://www.mapbox.com/about/maps/">Mapbox</a>
         )}
-        . Nærmeste adresse hentes fra{' '}
-        <a href="https://www.kartverket.no/api-og-data/eiendomsdata/brukarrettleiing-adresse-api">
-          Kartverket
+        . Adresse hentes fra{' '}
+        <a
+          href={
+            reverseProvider === 'osm'
+              ? 'https://www.openstreetmap.org/copyright'
+              : 'https://www.kartverket.no/api-og-data/eiendomsdata/brukarrettleiing-adresse-api'
+          }
+        >
+          {reverseProvider === 'osm' ? 'OpenStreetMap' : 'Kartverket'}
         </a>
         . Markøren viser alltid punktet du valgte.
       </p>

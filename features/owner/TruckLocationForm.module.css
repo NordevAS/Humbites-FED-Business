@@ -1,0 +1,45 @@
+.fields {
+  transition: opacity 180ms ease;
+}
+
+.fieldsLoading :global(.field) {
+  animation: field-loading 1.1s ease-in-out infinite;
+}
+
+.fieldsUpdating :global(.field) {
+  animation: field-updated 520ms ease-out both;
+}
+
+@keyframes field-loading {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+  50% {
+    box-shadow: 0 0 0 3px
+      color-mix(in srgb, var(--action, #bf4927) 17%, transparent);
+  }
+}
+
+@keyframes field-updated {
+  0% {
+    opacity: 0.58;
+    transform: translateY(4px);
+  }
+  65% {
+    opacity: 1;
+    transform: translateY(0);
+    box-shadow: 0 0 0 3px
+      color-mix(in srgb, var(--action, #bf4927) 20%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fieldsLoading :global(.field),
+  .fieldsUpdating :global(.field) {
+    animation: none;
+  }
+}
