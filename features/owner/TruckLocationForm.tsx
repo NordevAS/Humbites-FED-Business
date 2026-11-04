@@ -57,19 +57,39 @@ function initialLocation(truck: TruckLocation | undefined): EventLocation {
 }
 
 function detailsFromLocation(location: EventLocation): LocationFields {
-  if (location.addressDetails) return location.addressDetails;
   const label = location.label.trim();
   const addressLabel = label.replace(/^Ved\s+/i, '');
   const match = /^(.*?),\s*(\d{4})\s+([^,]+?)(?:,\s*(.+))?$/.exec(addressLabel);
   if (match) {
     return {
-      address: match[1].trim(),
-      postalCode: match[2],
-      city: match[3].trim(),
-      state: '',
-      country: match[4]?.trim() || 'Norge',
+      address: location.addressDetails?.address || match[1].trim(),
+      postalCode: location.addressDetails?.postalCode || match[2],
+      city: location.addressDetails?.city || match[3].trim(),
+      state: location.addressDetails?.state || '',
+      country: location.addressDetails?.country || match[4]?.trim() || 'Norge',
     };
   }
+  const parts = addressLabel
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const countryFromLabel = parts.length > 1 ? parts.at(-1) || '' : '';
+  const localityFromLabel = parts.length > 2 ? parts.at(-2) || '' : '';
+  const postalMatch = /^(\S+)\s+(.+)$/.exec(localityFromLabel);
+  const parsedCity = postalMatch ? postalMatch[2] : localityFromLabel;
+  if (parts.length > 1 || location.addressDetails) {
+    return {
+      address:
+        location.addressDetails?.address || (parts.length > 2 ? parts[0] : ''),
+      postalCode: location.addressDetails?.postalCode || postalMatch?.[1] || '',
+      city: location.addressDetails?.city || parsedCity,
+      state:
+        location.addressDetails?.state ||
+        (parts.length > 3 ? parts.at(-3) || '' : ''),
+      country: location.addressDetails?.country || countryFromLabel,
+    };
+  }
+  if (location.addressDetails) return location.addressDetails;
   const example = /^(.*?)\s+sentrum\s+\(eksempelsted\)$/i.exec(label);
   if (example) {
     return {
@@ -224,6 +244,7 @@ export function TruckLocationForm({
         location={location}
         onLocationChange={chooseLocation}
         showLocationSearch={false}
+        reverseProvider="osm"
         compact
       />
       <div className="form-grid">

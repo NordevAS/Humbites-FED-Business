@@ -24,6 +24,7 @@ export interface TravelMapProps {
   onLocationChange?: (location: EventLocation) => void;
   compact?: boolean;
   showLocationSearch?: boolean;
+  reverseProvider?: 'kartverket' | 'osm';
 }
 
 const clientFailure = (): MapboxFailure => ({
@@ -90,10 +91,18 @@ export function TravelMap({
   onLocationChange,
   compact = false,
   showLocationSearch = true,
+  reverseProvider = 'kartverket',
 }: TravelMapProps) {
   const { showcase } = useDemo();
   const fieldId = useId();
-  const [mapSelection] = useState(createMapSelection);
+  const [mapSelection] = useState(() =>
+    createMapSelection(
+      fetch,
+      reverseProvider === 'osm'
+        ? '/api/places/osm-reverse'
+        : '/api/places/reverse',
+    ),
+  );
   const [reverseMessage, setReverseMessage] = useState('');
   const pendingPoint = useRef<EventLocation['coordinates']>(undefined);
   const cancelReverse = () => {

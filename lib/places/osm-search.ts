@@ -27,7 +27,14 @@ const featureSchema = z.object({
     street: z.string().optional(),
     postcode: z.string().optional(),
     city: z.string().optional(),
+    town: z.string().optional(),
+    village: z.string().optional(),
+    municipality: z.string().optional(),
+    locality: z.string().optional(),
     district: z.string().optional(),
+    suburb: z.string().optional(),
+    neighbourhood: z.string().optional(),
+    quarter: z.string().optional(),
     county: z.string().optional(),
     state: z.string().optional(),
     country: z.string().optional(),
@@ -52,6 +59,51 @@ export interface OsmAddressSuggestion {
 export type OsmAddressSearchResult =
   | { status: 'ready'; suggestions: OsmAddressSuggestion[] }
   | { status: 'error'; message: string };
+
+function suggestionFromFeature(
+  feature: z.infer<typeof featureSchema>,
+): OsmAddressSuggestion | undefined {
+  const properties = feature.properties;
+  const address = [properties.street, properties.housenumber]
+    .filter(Boolean)
+    .join(' ');
+  const city =
+    properties.city ||
+    properties.town ||
+    properties.village ||
+    properties.municipality ||
+    properties.locality ||
+    properties.district ||
+    properties.suburb ||
+    properties.neighbourhood ||
+    properties.quarter ||
+    properties.county ||
+    '';
+  const postalCity = [properties.postcode, city].filter(Boolean).join(' ');
+  const label = [
+    address || properties.name,
+    postalCity,
+    properties.state,
+    properties.country,
+  ]
+    .filter(Boolean)
+    .filter((part, index, all) => all.indexOf(part) === index)
+    .join(', ');
+  if (!label || !properties.country) return undefined;
+  const [longitude, latitude] = feature.geometry.coordinates;
+  return {
+    id: `${properties.osm_type ?? 'osm'}:${properties.osm_id ?? `${longitude}:${latitude}`}`,
+    label,
+    coordinates: { longitude, latitude },
+    addressDetails: {
+      address: address || properties.name || '',
+      city,
+      state: properties.state ?? '',
+      postalCode: properties.postcode ?? '',
+      country: properties.country,
+    },
+  };
+}
 
 async function boundedJson(response: Response): Promise<unknown> {
   const reader = response.body?.getReader();
@@ -104,44 +156,67 @@ export async function searchOsmAddresses(
     if (!response.ok) throw new Error('OSM search unavailable');
     const result = responseSchema.parse(await boundedJson(response));
     const suggestions = result.features.flatMap((feature) => {
-      const properties = feature.properties;
-      const address = [properties.street, properties.housenumber]
-        .filter(Boolean)
-        .join(' ');
-      const city =
-        properties.city || properties.district || properties.county || '';
-      const postalCity = [properties.postcode, city].filter(Boolean).join(' ');
-      const label = [
-        address || properties.name,
-        postalCity,
-        properties.state,
-        properties.country,
-      ]
-        .filter(Boolean)
-        .filter((part, index, all) => all.indexOf(part) === index)
-        .join(', ');
-      if (!label || !properties.country) return [];
-      const [longitude, latitude] = feature.geometry.coordinates;
-      return [
-        {
-          id: `${properties.osm_type ?? 'osm'}:${properties.osm_id ?? `${longitude}:${latitude}`}`,
-          label,
-          coordinates: { longitude, latitude },
-          addressDetails: {
-            address: address || properties.name || '',
-            city,
-            state: properties.state ?? '',
-            postalCode: properties.postcode ?? '',
-            country: properties.country,
-          },
-        },
-      ];
+      const suggestion = suggestionFromFeature(feature);
+      return suggestion ? [suggestion] : [];
     });
     return { status: 'ready', suggestions };
   } catch {
     return {
       status: 'error',
       message: 'OpenStreetMap-adressesøket er utilgjengelig akkurat nå.',
+    };
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', cancel);
+  }
+}
+
+export async function reverseOsmAddress(
+  coordinates: { latitude: number; longitude: number },
+  fetcher: typeof fetch = fetch,
+  signal?: AbortSignal,
+) {
+  if (
+    !Number.isFinite(coordinates.latitude) ||
+    Math.abs(coordinates.latitude) > 90 ||
+    !Number.isFinite(coordinates.longitude) ||
+    Math.abs(coordinates.longitude) > 180
+  )
+    return { status: 'error' as const, message: 'Ugyldig kartpunkt.' };
+  const controller = new AbortController();
+  const cancel = () => controller.abort();
+  signal?.addEventListener('abort', cancel, { once: true });
+  if (signal?.aborted) controller.abort();
+  const timer = setTimeout(cancel, 8000);
+  try {
+    const url = new URL('https://photon.komoot.io/reverse');
+    url.search = new URLSearchParams({
+      lat: String(coordinates.latitude),
+      lon: String(coordinates.longitude),
+      limit: '1',
+    }).toString();
+    const response = await fetcher(url, {
+      signal: controller.signal,
+      redirect: 'manual',
+      cache: 'no-store',
+      headers: { Accept: 'application/json' },
+    });
+    if (!response.ok) throw new Error('OSM reverse lookup unavailable');
+    const result = responseSchema.parse(await boundedJson(response));
+    const feature = result.features[0];
+    const suggestion = feature ? suggestionFromFeature(feature) : undefined;
+    if (!suggestion) return { status: 'not-found' as const };
+    return {
+      status: 'ready' as const,
+      label: suggestion.label,
+      distanceMeters: 0,
+      attribution: 'OpenStreetMap',
+      addressDetails: suggestion.addressDetails,
+    };
+  } catch {
+    return {
+      status: 'error' as const,
+      message: 'Adressen kunne ikke hentes. Kartpunktet er fortsatt valgt.',
     };
   } finally {
     clearTimeout(timer);
@@ -208,5 +283,46 @@ export async function searchOsmAddressesRoute(
       { status: 'error', message: 'Ugyldig eller for langt søk.' },
       400,
     );
+  }
+}
+
+export async function reverseOsmAddressRoute(
+  request: Request,
+  fetcher: typeof fetch = fetch,
+) {
+  const reply = (body: unknown, status = 200) =>
+    Response.json(body, {
+      status,
+      headers: { 'Cache-Control': 'public, max-age=30, s-maxage=120' },
+    });
+  if (
+    request.headers.get('origin') !== new URL(request.url).origin ||
+    request.headers.get('sec-fetch-site') === 'cross-site'
+  )
+    return reply({ status: 'error', message: 'Ugyldig forespørsel.' }, 403);
+  if (!request.headers.get('content-type')?.includes('application/json'))
+    return reply(
+      { status: 'error', message: 'Send kartpunktet som JSON.' },
+      400,
+    );
+  try {
+    const body: unknown = await request.json();
+    const parsed = z
+      .object({
+        latitude: z.number().finite().min(-90).max(90),
+        longitude: z.number().finite().min(-180).max(180),
+      })
+      .strict()
+      .safeParse(body);
+    if (!parsed.success)
+      return reply({ status: 'error', message: 'Ugyldig kartpunkt.' }, 400);
+    const result = await reverseOsmAddress(
+      parsed.data,
+      fetcher,
+      request.signal,
+    );
+    return reply(result, result.status === 'error' ? 502 : 200);
+  } catch {
+    return reply({ status: 'error', message: 'Ugyldig kartpunkt.' }, 400);
   }
 }
