@@ -23,6 +23,7 @@ export interface TravelMapProps {
   location?: EventLocation;
   onLocationChange?: (location: EventLocation) => void;
   compact?: boolean;
+  showLocationSearch?: boolean;
 }
 
 const clientFailure = (): MapboxFailure => ({
@@ -69,6 +70,7 @@ export function TravelMap({
   location,
   onLocationChange,
   compact = false,
+  showLocationSearch = true,
 }: TravelMapProps) {
   const { showcase } = useDemo();
   const fieldId = useId();
@@ -359,7 +361,7 @@ export function TravelMap({
       className={`${styles.root} ${compact ? styles.compact : ''}`}
       aria-label="Sted og kjøreinformasjon"
     >
-      {onLocationChange && (
+      {onLocationChange && showLocationSearch && (
         <div className={styles.searchArea}>
           <PlaceAutocomplete
             location={location ?? { label: '', source: 'manual' }}

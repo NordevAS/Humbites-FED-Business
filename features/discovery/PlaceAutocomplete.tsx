@@ -20,6 +20,7 @@ export function PlaceAutocomplete({
   label = 'HVOR?',
   required = false,
   inputProps = {},
+  showPresets = true,
 }: {
   location: EventLocation;
   onChange: (location: EventLocation) => void;
@@ -31,6 +32,7 @@ export function PlaceAutocomplete({
     InputHTMLAttributes<HTMLInputElement>,
     'id' | 'aria-invalid' | 'aria-describedby'
   >;
+  showPresets?: boolean;
 }) {
   const generatedId = useId();
   const id = inputProps.id ?? generatedId;
@@ -42,7 +44,7 @@ export function PlaceAutocomplete({
     open && !location.coordinates,
   );
   const suggestions = [
-    ...suggestPlaces(location.label).map((place) => ({
+    ...(showPresets ? suggestPlaces(location.label) : []).map((place) => ({
       id: place.city,
       label: place.label,
       title: place.city,

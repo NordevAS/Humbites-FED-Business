@@ -1224,6 +1224,11 @@ export function OwnerDashboard() {
                       onSaved={() => {
                         setNotice('Truckens adresse og kartposisjon er lagret.');
                         reloadCatalogue();
+                        void api<{ data: Option[] }>(
+                          `owner/businesses/${business}/trucks`,
+                        )
+                          .then((result) => setTrucks(result.data))
+                          .catch((cause) => setError(errorMessage(cause)));
                       }}
                     />
                     <SettingsForm

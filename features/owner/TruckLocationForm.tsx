@@ -1,6 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import type { Coordinates, EventLocation } from '@/domain';
+import { isCoordinates } from '@/domain';
+import { PlaceAutocomplete } from '@/features/discovery/PlaceAutocomplete';
+import { TravelMap } from '@/components/map/TravelMap';
 import { api, errorMessage } from '@/lib/booking/client';
 
 type TruckLocation = {
@@ -12,14 +16,82 @@ type TruckLocation = {
   latitude?: number | string | null;
   longitude?: number | string | null;
 };
-const normalize = (truck: TruckLocation) => ({
-  address: truck.address ?? '',
-  city: truck.city ?? '',
-  state: truck.state ?? '',
-  postalCode: truck.postalCode ?? '',
-  country: truck.country ?? '',
-  latitude: truck.latitude == null ? '' : String(truck.latitude),
-  longitude: truck.longitude == null ? '' : String(truck.longitude),
+type LocationFields = Pick<
+  TruckLocation,
+  'address' | 'city' | 'state' | 'postalCode' | 'country'
+>;
+
+const fieldsFor = (truck: TruckLocation | undefined): LocationFields => ({
+  address: truck?.address ?? '',
+  city: truck?.city ?? '',
+  state: truck?.state ?? '',
+  postalCode: truck?.postalCode ?? '',
+  country: truck?.country ?? '',
+});
+
+function coordinatesFor(
+  truck: TruckLocation | undefined,
+): Coordinates | undefined {
+  if (truck?.latitude == null || truck.longitude == null) return undefined;
+  const point = {
+    latitude: Number(truck.latitude),
+    longitude: Number(truck.longitude),
+  };
+  return isCoordinates(point) ? point : undefined;
+}
+
+function initialLocation(truck: TruckLocation | undefined): EventLocation {
+  const fields = fieldsFor(truck);
+  const label = [
+    fields.address,
+    [fields.postalCode, fields.city].filter(Boolean).join(' '),
+    fields.country,
+  ]
+    .filter(Boolean)
+    .join(', ');
+  return {
+    label,
+    coordinates: coordinatesFor(truck),
+    source: 'map',
+  };
+}
+
+function detailsFromLocation(location: EventLocation): LocationFields {
+  const label = location.label.trim();
+  const addressLabel = label.replace(/^Ved\s+/i, '');
+  const match = /^(.*?),\s*(\d{4})\s+([^,]+?)(?:,\s*(.+))?$/.exec(addressLabel);
+  if (match) {
+    return {
+      address: match[1].trim(),
+      postalCode: match[2],
+      city: match[3].trim(),
+      state: '',
+      country: match[4]?.trim() || 'Norge',
+    };
+  }
+  const example = /^(.*?)\s+sentrum\s+\(eksempelsted\)$/i.exec(label);
+  if (example) {
+    return {
+      address: example[1].trim(),
+      city: example[1].trim(),
+      postalCode: '',
+      state: '',
+      country: 'Norge',
+    };
+  }
+  return {
+    address: '',
+    city: '',
+    postalCode: '',
+    state: '',
+    country: '',
+  };
+}
+
+const normalize = (value: TruckLocation | undefined) => ({
+  ...fieldsFor(value),
+  latitude: coordinatesFor(value)?.latitude ?? null,
+  longitude: coordinatesFor(value)?.longitude ?? null,
 });
 
 export function TruckLocationForm({
@@ -35,61 +107,86 @@ export function TruckLocationForm({
   onDirtyChange?: (dirty: boolean) => void;
   onBusyChange?: (busy: boolean) => void;
 }) {
-  const [form, setForm] = useState(() => normalize(initial ?? {}));
-  const [baseline, setBaseline] = useState(() => JSON.stringify(normalize(initial ?? {})));
+  const [location, setLocation] = useState(() => initialLocation(initial));
+  const [fields, setFields] = useState(() => fieldsFor(initial));
+  const initialValue = JSON.stringify(normalize(initial));
+  const [baseline, setBaseline] = useState(initialValue);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const dirty = JSON.stringify(form) !== baseline;
   const callbacks = useRef({ onDirtyChange, onBusyChange });
   callbacks.current = { onDirtyChange, onBusyChange };
+  const point = location.coordinates;
+  const currentValue = JSON.stringify({
+    ...fields,
+    latitude: point?.latitude ?? null,
+    longitude: point?.longitude ?? null,
+  });
+  const dirty = currentValue !== baseline;
 
   useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
   useEffect(() => onBusyChange?.(busy), [busy, onBusyChange]);
-  useEffect(() => () => {
-    callbacks.current.onDirtyChange?.(false);
-    callbacks.current.onBusyChange?.(false);
-  }, []);
-
+  useEffect(
+    () => () => {
+      callbacks.current.onDirtyChange?.(false);
+      callbacks.current.onBusyChange?.(false);
+    },
+    [],
+  );
   useEffect(() => {
-    const value = JSON.stringify(normalize(initial ?? {}));
+    const value = JSON.stringify(normalize(initial));
     if (!dirty) {
-      setForm(JSON.parse(value));
+      setLocation(initialLocation(initial));
+      setFields(fieldsFor(initial));
       setBaseline(value);
     }
   }, [initial, dirty]);
 
-  function change(key: keyof typeof form, value: string) {
-    setForm((current) => ({ ...current, [key]: value }));
+  function chooseLocation(next: EventLocation) {
+    setLocation(next);
+    setFields(
+      next.coordinates && isCoordinates(next.coordinates)
+        ? detailsFromLocation(next)
+        : { address: '', city: '', state: '', postalCode: '', country: '' },
+    );
+    setError('');
   }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    if (busy) return;
+    if (!point || !isCoordinates(point)) {
+      setError('Søk opp en adresse eller velg et punkt på kartet først.');
+      return;
+    }
+    if (
+      !fields.address?.trim() ||
+      !fields.city?.trim() ||
+      !fields.country?.trim()
+    ) {
+      setError(
+        'Stedet mangler adresse, by eller land. Velg en adresse eller et kartpunkt nær en adresse.',
+      );
+      return;
+    }
     setBusy(true);
     setError('');
     try {
-      const latitude = Number(form.latitude);
-      const longitude = Number(form.longitude);
-      if (!form.address.trim() || !form.city.trim() || !form.country.trim())
-        throw new Error('Fyll inn adresse, sted og land.');
-      if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90)
-        throw new Error('Breddegrad må være mellom −90 og 90.');
-      if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180)
-        throw new Error('Lengdegrad må være mellom −180 og 180.');
       const result = await api<{ data: TruckLocation }>(path, {
         method: 'PATCH',
         body: JSON.stringify({
-          address: form.address.trim(),
-          city: form.city.trim(),
-          state: form.state.trim(),
-          postalCode: form.postalCode.trim(),
-          country: form.country.trim(),
-          latitude,
-          longitude,
+          address: fields.address.trim(),
+          city: fields.city.trim(),
+          state: fields.state?.trim() ?? '',
+          postalCode: fields.postalCode?.trim() ?? '',
+          country: fields.country.trim(),
+          latitude: point.latitude,
+          longitude: point.longitude,
         }),
       });
-      const next = JSON.stringify(normalize(result.data));
-      setForm(JSON.parse(next));
-      setBaseline(next);
+      const nextValue = JSON.stringify(normalize(result.data));
+      setBaseline(nextValue);
+      setFields(fieldsFor(result.data));
+      setLocation(initialLocation(result.data));
       onSaved();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : errorMessage(cause));
@@ -99,47 +196,78 @@ export function TruckLocationForm({
   }
 
   return (
-    <form className="service-form service-card owner-settings-form" onSubmit={submit}>
+    <form
+      className="service-form service-card owner-settings-form"
+      onSubmit={submit}
+    >
       <span className="eyebrow">TRUCKENS PLASSERING</span>
       <h2>Adresse og kartposisjon</h2>
-      <p>Posisjonen brukes til å vise trucken på kartet og beregne tjenesteavstand. Adresseteksten brukes som stedsinformasjon.</p>
-      {error && <div role="alert" className="service-banner error">{error}</div>}
+      <p>
+        Søk etter adressen eller velg punkt direkte i kartet. Adresse, by, land
+        og koordinater oppdateres fra stedet du velger.
+      </p>
+      {error && (
+        <div role="alert" className="service-banner error">
+          {error}
+        </div>
+      )}
+      <PlaceAutocomplete
+        variant="field"
+        label="Søk etter adresse eller sted"
+        location={location}
+        onChange={chooseLocation}
+        showPresets={false}
+      />
+      <TravelMap
+        location={location}
+        onLocationChange={chooseLocation}
+        showLocationSearch={false}
+        compact
+      />
       <div className="form-grid">
         <label className="field">
           <span>Adresse</span>
-          <input required maxLength={200} value={form.address} onChange={(event) => change('address', event.target.value)} />
+          <input readOnly value={fields.address ?? ''} />
         </label>
         <label className="field">
-          <span>Sted</span>
-          <input required maxLength={100} value={form.city} onChange={(event) => change('city', event.target.value)} />
+          <span>By / sted</span>
+          <input readOnly value={fields.city ?? ''} />
         </label>
         <label className="field">
           <span>Region</span>
-          <input maxLength={100} value={form.state} onChange={(event) => change('state', event.target.value)} />
+          <input readOnly value={fields.state ?? ''} />
         </label>
         <label className="field">
           <span>Postnummer</span>
-          <input maxLength={20} value={form.postalCode} onChange={(event) => change('postalCode', event.target.value)} />
+          <input readOnly value={fields.postalCode ?? ''} />
         </label>
         <label className="field">
           <span>Land</span>
-          <input required maxLength={100} value={form.country} onChange={(event) => change('country', event.target.value)} />
-        </label>
-      </div>
-      <div className="form-grid">
-        <label className="field">
-          <span>Breddegrad</span>
-          <input required type="number" min={-90} max={90} step="any" value={form.latitude} onChange={(event) => change('latitude', event.target.value)} />
-        </label>
-        <label className="field">
-          <span>Lengdegrad</span>
-          <input required type="number" min={-180} max={180} step="any" value={form.longitude} onChange={(event) => change('longitude', event.target.value)} />
+          <input readOnly value={fields.country ?? ''} />
         </label>
       </div>
       <div className="service-actions">
-        <span role="status">{dirty ? 'Ulagrede endringer' : 'Ingen ulagrede endringer'}</span>
-        <button type="button" disabled={busy || !dirty} className="button button-secondary" onClick={() => { setForm(normalize(initial ?? {})); setError(''); }}>Forkast</button>
-        <button disabled={busy || !dirty} className="button button-primary">{busy ? 'Lagrer …' : 'Lagre plassering'}</button>
+        <span role="status">
+          {dirty ? 'Ulagrede endringer' : 'Ingen ulagrede endringer'}
+        </span>
+        <button
+          type="button"
+          disabled={busy || !dirty}
+          className="button button-secondary"
+          onClick={() => {
+            setLocation(initialLocation(initial));
+            setFields(fieldsFor(initial));
+            setError('');
+          }}
+        >
+          Forkast
+        </button>
+        <button
+          disabled={busy || !dirty || !point}
+          className="button button-primary"
+        >
+          {busy ? 'Lagrer …' : 'Lagre plassering'}
+        </button>
       </div>
     </form>
   );
