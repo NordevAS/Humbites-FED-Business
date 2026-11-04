@@ -549,6 +549,7 @@ export function OpeningHoursEditor({
         </p>
       )}
       <div className="schedule-layout">
+        <div className="schedule-main-column">
         <details className="schedule-card schedule-disclosure schedule-week">
           <summary className="schedule-section-heading schedule-disclosure-heading">
             <span className="schedule-number">01</span>
@@ -695,220 +696,7 @@ export function OpeningHoursEditor({
           </div>
           </div>
         </details>
-        <details className="schedule-preview schedule-card schedule-disclosure">
-          <summary className="schedule-section-heading schedule-disclosure-heading">
-            <span className="schedule-number">↗</span>
-            <div>
-              <h3>Se kalenderen</h3>
-              <p>
-                {dirty ? 'Forhåndsvisning av ulagret utkast' : 'Lagret plan'} ·
-                Europe/Oslo
-              </p>
-            </div>
-            <Icon name="chevron" size={20} />
-          </summary>
-          <div className="schedule-disclosure-content">
-          <div className="schedule-month-nav">
-            <button
-              type="button"
-              className="schedule-icon-button"
-              aria-label="Forrige måned"
-              onClick={() => goMonth(monthShift(month, -1))}
-            >
-              <Icon name="back" size={18} />
-            </button>
-            <h4>
-              {displayDate(`${month}-01`, { month: 'long', year: 'numeric' })}
-            </h4>
-            <button
-              type="button"
-              className="schedule-icon-button"
-              aria-label="Neste måned"
-              onClick={() => goMonth(monthShift(month, 1))}
-            >
-              <Icon name="arrow" size={18} />
-            </button>
-          </div>
-          <button
-            type="button"
-            className="schedule-add"
-            onClick={() => {
-              goMonth(today.slice(0, 7));
-              setSelectedDate(today);
-            }}
-          >
-            Gå til i dag
-          </button>
-          {previewError ? (
-            <div className="service-banner error" role="alert">
-              <p>{previewError}</p>
-              <button
-                type="button"
-                className="schedule-add"
-                onClick={() => setRefresh((value) => value + 1)}
-              >
-                Prøv forhåndsvisning igjen
-              </button>
-            </div>
-          ) : !validation.success ? (
-            <p className="schedule-empty">
-              Rett opp ukeplanen for å se kalenderen.
-            </p>
-          ) : !currentPreview ? (
-            <p className="schedule-empty" role="status">
-              Oppdaterer kalenderen …
-            </p>
-          ) : (
-            <>
-              <div
-                className="schedule-calendar"
-                aria-label={`Kalender for ${displayDate(`${month}-01`, { month: 'long', year: 'numeric' })}`}
-              >
-                {weekDays.map((day) => (
-                  <span className="schedule-calendar-weekday" key={day.id}>
-                    {day.short}
-                  </span>
-                ))}
-                {Array.from(
-                  { length: (currentPreview.days[0].weekday + 6) % 7 },
-                  (_, index) => (
-                    <span key={`blank-${index}`} aria-hidden="true" />
-                  ),
-                )}
-                {currentPreview.days.map((day) => (
-                  <button
-                    type="button"
-                    key={day.date}
-                    className={`schedule-calendar-day ${day.closed ? 'is-closed' : 'is-open'} ${day.source !== 'weekly' ? 'is-special' : ''} ${day.date === today ? 'is-today' : ''}`}
-                    aria-label={`${displayDate(day.date, { weekday: 'long', day: 'numeric', month: 'long' })}: ${day.closed ? 'stengt' : day.intervals.map(intervalLabel).join(', ')}${day.label ? `, ${day.label}` : ''}${dayReservations(day.date).length ? `, ${dayReservations(day.date).length} godkjente reservasjoner` : ''}`}
-                    aria-pressed={selectedDate === day.date}
-                    onClick={() => {
-                      setSelectedDate(day.date);
-                      setDateToAdd(day.date);
-                    }}
-                  >
-                    <span>{Number(day.date.slice(-2))}</span>
-                    <i aria-hidden="true" />
-                    {dayReservations(day.date).length > 0 && (
-                      <b
-                        className="schedule-booking-marker"
-                        aria-hidden="true"
-                      />
-                    )}
-                  </button>
-                ))}
-              </div>
-              <div className="schedule-calendar-legend">
-                <span>
-                  <i className="open-dot" /> Åpent
-                </span>
-                <span>
-                  <i className="closed-dot" /> Stengt
-                </span>
-                <span>
-                  <i className="special-dot" /> Unntak / ferie
-                </span>
-                <span>
-                  <i className="booked-dot" /> Godkjent reservasjon
-                </span>
-              </div>
-              {selectedDay && (
-                <div className="schedule-day-detail" aria-live="polite">
-                  <span className="eyebrow">
-                    {sourceLabels[selectedDay.source]}
-                  </span>
-                  <h4>
-                    {displayDate(selectedDate, {
-                      weekday: 'long',
-                      day: 'numeric',
-                      month: 'long',
-                    })}
-                  </h4>
-                  {selectedDay.label && (
-                    <p>
-                      <strong>{selectedDay.label}</strong>
-                    </p>
-                  )}
-                  <p>
-                    {selectedDay.closed
-                      ? 'Stengt hele dagen'
-                      : selectedDay.intervals.map(intervalLabel).join(' · ')}
-                  </p>
-                  {selectedReservations.length > 0 && (
-                    <div className="schedule-reservations">
-                      <strong>
-                        {selectedReservations.length} godkjente{' '}
-                        {selectedReservations.length === 1
-                          ? 'reservasjon'
-                          : 'reservasjoner'}
-                      </strong>
-                      <ul>
-                        {selectedReservations.map((row) => (
-                          <li key={row.bookingId}>
-                            <span>
-                              Servering: {instantLabel(row.startsAt)} –{' '}
-                              {instantLabel(row.endsAt)}
-                            </span>
-                            <small>
-                              Opptatt med rigg/rydding:{' '}
-                              {instantLabel(row.reservedStartsAt)} –{' '}
-                              {instantLabel(row.reservedEndsAt)}
-                            </small>
-                            <small>Referanse {row.bookingId.slice(0, 8)}</small>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {selectedConflicts.length > 0 && (
-                    <p className="schedule-conflict">
-                      {selectedConflicts.length} godkjente bookinger berøres av
-                      planen denne dagen.
-                    </p>
-                  )}
-                  <button
-                    type="button"
-                    disabled={busy}
-                    className="schedule-add"
-                    onClick={() => addDate(selectedDate)}
-                  >
-                    Tilpass denne datoen →
-                  </button>
-                </div>
-              )}
-              {currentPreview.conflicts.length > 0 && (
-                <div className="service-banner error">
-                  <strong>
-                    {currentPreview.conflicts.length} fremtidige, godkjente
-                    bookinger krever oppfølging
-                  </strong>
-                  <p>
-                    Varslet gjelder alle fremtidige datoer, ikke bare måneden
-                    som vises. Bookingene beholdes og avlyses ikke selv om du
-                    endrer åpningstidene. Se hver forespørsel før du avklarer
-                    endringen.
-                  </p>
-                  <ul>
-                    {currentPreview.conflicts.map((row) => (
-                      <li key={row.bookingId}>
-                        {displayDate(osloTime(new Date(row.startsAt)).date)} ·
-                        referanse {row.bookingId.slice(0, 8)}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </>
-          )}
-          <p className="schedule-help">
-            Ferie og stengte datoer går foran ukeplanen. Et datounntak erstatter
-            hele datoen, også nattåpning fra dagen før. Rigg før og etter
-            servering reserverer tid, men trenger ikke ligge innenfor
-            serveringstidene.
-          </p>
-          </div>
-        </details>
-      </div>
+
       <details id="schedule-exceptions" className="schedule-card schedule-disclosure">
         <summary className="schedule-section-heading schedule-disclosure-heading">
           <span className="schedule-number">02</span>
@@ -1368,6 +1156,218 @@ export function OpeningHoursEditor({
         )}
         </div>
       </details>
+        </div>
+        <aside className="schedule-preview schedule-card">
+          <div className="schedule-section-heading">
+            <span className="schedule-number">↗</span>
+            <div>
+              <h3>Kalender</h3>
+              <p>
+                {dirty ? 'Forhåndsvisning av ulagret utkast' : 'Lagret plan'} ·
+                Europe/Oslo
+              </p>
+            </div>
+          </div>
+          <div className="schedule-month-nav">
+            <button
+              type="button"
+              className="schedule-icon-button"
+              aria-label="Forrige måned"
+              onClick={() => goMonth(monthShift(month, -1))}
+            >
+              <Icon name="back" size={18} />
+            </button>
+            <h4>
+              {displayDate(`${month}-01`, { month: 'long', year: 'numeric' })}
+            </h4>
+            <button
+              type="button"
+              className="schedule-icon-button"
+              aria-label="Neste måned"
+              onClick={() => goMonth(monthShift(month, 1))}
+            >
+              <Icon name="arrow" size={18} />
+            </button>
+          </div>
+          <button
+            type="button"
+            className="schedule-add"
+            onClick={() => {
+              goMonth(today.slice(0, 7));
+              setSelectedDate(today);
+            }}
+          >
+            Gå til i dag
+          </button>
+          {previewError ? (
+            <div className="service-banner error" role="alert">
+              <p>{previewError}</p>
+              <button
+                type="button"
+                className="schedule-add"
+                onClick={() => setRefresh((value) => value + 1)}
+              >
+                Prøv forhåndsvisning igjen
+              </button>
+            </div>
+          ) : !validation.success ? (
+            <p className="schedule-empty">
+              Rett opp ukeplanen for å se kalenderen.
+            </p>
+          ) : !currentPreview ? (
+            <p className="schedule-empty" role="status">
+              Oppdaterer kalenderen …
+            </p>
+          ) : (
+            <>
+              <div
+                className="schedule-calendar"
+                aria-label={`Kalender for ${displayDate(`${month}-01`, { month: 'long', year: 'numeric' })}`}
+              >
+                {weekDays.map((day) => (
+                  <span className="schedule-calendar-weekday" key={day.id}>
+                    {day.short}
+                  </span>
+                ))}
+                {Array.from(
+                  { length: (currentPreview.days[0].weekday + 6) % 7 },
+                  (_, index) => (
+                    <span key={`blank-${index}`} aria-hidden="true" />
+                  ),
+                )}
+                {currentPreview.days.map((day) => (
+                  <button
+                    type="button"
+                    key={day.date}
+                    className={`schedule-calendar-day ${day.closed ? 'is-closed' : 'is-open'} ${day.source !== 'weekly' ? 'is-special' : ''} ${day.date === today ? 'is-today' : ''}`}
+                    aria-label={`${displayDate(day.date, { weekday: 'long', day: 'numeric', month: 'long' })}: ${day.closed ? 'stengt' : day.intervals.map(intervalLabel).join(', ')}${day.label ? `, ${day.label}` : ''}${dayReservations(day.date).length ? `, ${dayReservations(day.date).length} godkjente reservasjoner` : ''}`}
+                    aria-pressed={selectedDate === day.date}
+                    onClick={() => {
+                      setSelectedDate(day.date);
+                      setDateToAdd(day.date);
+                    }}
+                  >
+                    <span>{Number(day.date.slice(-2))}</span>
+                    <i aria-hidden="true" />
+                    {dayReservations(day.date).length > 0 && (
+                      <b
+                        className="schedule-booking-marker"
+                        aria-hidden="true"
+                      />
+                    )}
+                  </button>
+                ))}
+              </div>
+              <div className="schedule-calendar-legend">
+                <span>
+                  <i className="open-dot" /> Åpent
+                </span>
+                <span>
+                  <i className="closed-dot" /> Stengt
+                </span>
+                <span>
+                  <i className="special-dot" /> Unntak / ferie
+                </span>
+                <span>
+                  <i className="booked-dot" /> Godkjent reservasjon
+                </span>
+              </div>
+              {selectedDay && (
+                <div className="schedule-day-detail" aria-live="polite">
+                  <span className="eyebrow">
+                    {sourceLabels[selectedDay.source]}
+                  </span>
+                  <h4>
+                    {displayDate(selectedDate, {
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'long',
+                    })}
+                  </h4>
+                  {selectedDay.label && (
+                    <p>
+                      <strong>{selectedDay.label}</strong>
+                    </p>
+                  )}
+                  <p>
+                    {selectedDay.closed
+                      ? 'Stengt hele dagen'
+                      : selectedDay.intervals.map(intervalLabel).join(' · ')}
+                  </p>
+                  {selectedReservations.length > 0 && (
+                    <div className="schedule-reservations">
+                      <strong>
+                        {selectedReservations.length} godkjente{' '}
+                        {selectedReservations.length === 1
+                          ? 'reservasjon'
+                          : 'reservasjoner'}
+                      </strong>
+                      <ul>
+                        {selectedReservations.map((row) => (
+                          <li key={row.bookingId}>
+                            <span>
+                              Servering: {instantLabel(row.startsAt)} –{' '}
+                              {instantLabel(row.endsAt)}
+                            </span>
+                            <small>
+                              Opptatt med rigg/rydding:{' '}
+                              {instantLabel(row.reservedStartsAt)} –{' '}
+                              {instantLabel(row.reservedEndsAt)}
+                            </small>
+                            <small>Referanse {row.bookingId.slice(0, 8)}</small>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {selectedConflicts.length > 0 && (
+                    <p className="schedule-conflict">
+                      {selectedConflicts.length} godkjente bookinger berøres av
+                      planen denne dagen.
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    disabled={busy}
+                    className="schedule-add"
+                    onClick={() => addDate(selectedDate)}
+                  >
+                    Tilpass denne datoen →
+                  </button>
+                </div>
+              )}
+              {currentPreview.conflicts.length > 0 && (
+                <div className="service-banner error">
+                  <strong>
+                    {currentPreview.conflicts.length} fremtidige, godkjente
+                    bookinger krever oppfølging
+                  </strong>
+                  <p>
+                    Varslet gjelder alle fremtidige datoer, ikke bare måneden
+                    som vises. Bookingene beholdes og avlyses ikke selv om du
+                    endrer åpningstidene. Se hver forespørsel før du avklarer
+                    endringen.
+                  </p>
+                  <ul>
+                    {currentPreview.conflicts.map((row) => (
+                      <li key={row.bookingId}>
+                        {displayDate(osloTime(new Date(row.startsAt)).date)} ·
+                        referanse {row.bookingId.slice(0, 8)}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </>
+          )}
+          <p className="schedule-help">
+            Ferie og stengte datoer går foran ukeplanen. Et datounntak erstatter
+            hele datoen, også nattåpning fra dagen før. Rigg før og etter
+            servering reserverer tid, men trenger ikke ligge innenfor
+            serveringstidene.
+          </p>
+        </aside>
+      </div>
       <div className={`schedule-savebar ${dirty ? 'is-dirty' : ''}`}>
         <div>
           <strong>{dirty ? 'Ulagrede endringer' : 'Planen er lagret'}</strong>
