@@ -254,17 +254,9 @@ export function PlaceAutocomplete({
             )}
         </div>
       )}
-      <span className={styles.attribution}>
-        Adressedata:{' '}
-        {searchProvider === 'osm' ? (
-          <a
-            href="https://www.openstreetmap.org/copyright"
-            target="_blank"
-            rel="noreferrer"
-          >
-            © OpenStreetMap-bidragsytere
-          </a>
-        ) : (
+      {searchProvider !== 'osm' && (
+        <span className={styles.attribution}>
+          Adressedata:{' '}
           <>
             <a
               href="https://www.kartverket.no/"
@@ -282,8 +274,8 @@ export function PlaceAutocomplete({
               CC BY 4.0
             </a>
           </>
-        )}
-      </span>
+        </span>
+      )}
     </div>
   );
 }

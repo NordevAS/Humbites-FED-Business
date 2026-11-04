@@ -149,6 +149,34 @@
   background: #7445b7;
   font-size: 15px;
 }
+.truckLocationPin {
+  width: 44px;
+  height: 56px;
+  filter: drop-shadow(0 2px 5px #261c1645);
+  cursor: pointer;
+}
+.truckLocationPin svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.pinShape {
+  fill: #bf4927;
+  stroke: #fff;
+  stroke-width: 2;
+}
+.truckShape {
+  fill: #fff;
+  stroke: #fff;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+.wheelShape {
+  fill: #261c16;
+  stroke: #fff;
+  stroke-width: 1;
+}
 @media (max-width: 500px) {
   .searchArea {
     padding: 16px;

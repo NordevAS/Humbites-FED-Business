@@ -53,6 +53,13 @@ const openStreetMapStyle = {
     },
   ],
 };
+function createTruckLocationPin() {
+  const element = document.createElement('div');
+  element.className = styles.truckLocationPin;
+  element.setAttribute('aria-label', 'Truckens valgte posisjon');
+  element.innerHTML = `<svg viewBox="0 0 48 60" aria-hidden="true" focusable="false"><path class="${styles.pinShape}" d="M24 1C11.3 1 1 11.3 1 24c0 16 23 34 23 34s23-18 23-34C47 11.3 36.7 1 24 1Z"/><path class="${styles.truckShape}" d="M10 20h19v15H10zM29 25h6l5 6v4H29z"/><circle class="${styles.wheelShape}" cx="16" cy="38" r="3"/><circle class="${styles.wheelShape}" cx="34" cy="38" r="3"/></svg>`;
+  return element;
+}
 async function post<T>(
   operation: string,
   data: unknown,
@@ -153,10 +160,15 @@ export function TravelMap({
     if (!instance || !gl || mapState !== 'ready') return;
     clearPreviewMarker();
     selectedLocationMarker.current?.remove();
-    const element = document.createElement('div');
-    element.className = styles.eventMarker;
-    element.textContent = '●';
-    element.setAttribute('aria-label', 'Truckens valgte posisjon');
+    const element =
+      reverseProvider === 'osm'
+        ? createTruckLocationPin()
+        : document.createElement('div');
+    if (reverseProvider !== 'osm') {
+      element.className = styles.eventMarker;
+      element.textContent = '●';
+      element.setAttribute('aria-label', 'Stedets posisjon');
+    }
     selectedLocationMarker.current = new gl.Marker({
       element,
       anchor: 'bottom',
@@ -195,10 +207,15 @@ export function TravelMap({
     if (!instance || !gl || mapState !== 'ready') return;
     clearPreviewMarker();
     selectedLocationMarker.current?.remove();
-    const element = document.createElement('div');
-    element.className = styles.eventMarker;
-    element.textContent = '●';
-    element.setAttribute('aria-label', 'Ny posisjon som kontrolleres');
+    const element =
+      reverseProvider === 'osm'
+        ? createTruckLocationPin()
+        : document.createElement('div');
+    if (reverseProvider !== 'osm') {
+      element.className = styles.eventMarker;
+      element.textContent = '●';
+      element.setAttribute('aria-label', 'Ny posisjon som kontrolleres');
+    }
     previewMarker.current = new gl.Marker({ element, anchor: 'bottom' })
       .setLngLat([point.longitude, point.latitude])
       .addTo(instance);

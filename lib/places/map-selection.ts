@@ -62,7 +62,7 @@ export function createMapSelection(
         });
         announce(
           reverseEndpoint === '/api/places/osm-reverse'
-            ? 'Adressen fra OpenStreetMap er hentet. Kartpunktet er beholdt.'
+            ? ''
             : `Nærmeste adresse er ${result.distanceMeters} meter unna. Ditt kartpunkt er beholdt.`,
         );
       } else
