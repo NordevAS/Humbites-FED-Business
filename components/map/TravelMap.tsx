@@ -186,7 +186,7 @@ export function TravelMap({
       .addTo(instance);
     instance.easeTo({
       center: [point.longitude, point.latitude],
-      zoom: 16,
+      zoom: 17,
       duration: 700,
     });
   };
@@ -234,7 +234,7 @@ export function TravelMap({
       .addTo(instance);
     instance.easeTo({
       center: [point.longitude, point.latitude],
-      zoom: 16,
+      zoom: 17,
       duration: 700,
     });
   };
@@ -460,7 +460,7 @@ export function TravelMap({
     if (pendingPoint.current) {
       instance.easeTo({
         center: [pendingPoint.current.longitude, pendingPoint.current.latitude],
-        zoom: 16,
+        zoom: 17,
         duration: 700,
       });
       return;
@@ -482,7 +482,7 @@ export function TravelMap({
     ) {
       instance.easeTo({
         center: [longitude, latitude],
-        zoom: 16,
+        zoom: 17,
         duration: 700,
       });
       return;
