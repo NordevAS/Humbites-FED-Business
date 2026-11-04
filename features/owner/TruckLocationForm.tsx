@@ -146,9 +146,11 @@ export function TruckLocationForm({
   const [busy, setBusy] = useState(false);
   const [resolvingLocation, setResolvingLocation] = useState(false);
   const [fieldsUpdating, setFieldsUpdating] = useState(false);
+  const fieldsSkeletonTimer = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const [error, setError] = useState('');
   const callbacks = useRef({ onDirtyChange, onBusyChange });
-  const previousFields = useRef(JSON.stringify(fields));
   callbacks.current = { onDirtyChange, onBusyChange };
   const point = location.coordinates;
   const currentValue = JSON.stringify({
@@ -159,20 +161,22 @@ export function TruckLocationForm({
   const dirty = currentValue !== baseline;
 
   useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
-  useEffect(() => {
-    const serialized = JSON.stringify(fields);
-    if (previousFields.current === serialized) return;
-    previousFields.current = serialized;
+  function showFieldsSkeleton() {
+    if (fieldsSkeletonTimer.current) clearTimeout(fieldsSkeletonTimer.current);
     setFieldsUpdating(true);
-    const timer = setTimeout(() => setFieldsUpdating(false), 600);
-    return () => clearTimeout(timer);
-  }, [fields]);
+    fieldsSkeletonTimer.current = setTimeout(() => {
+      fieldsSkeletonTimer.current = null;
+      setFieldsUpdating(false);
+    }, 500);
+  }
   useEffect(
     () => onBusyChange?.(busy || resolvingLocation),
     [busy, resolvingLocation, onBusyChange],
   );
   useEffect(
     () => () => {
+      if (fieldsSkeletonTimer.current)
+        clearTimeout(fieldsSkeletonTimer.current);
       callbacks.current.onDirtyChange?.(false);
       callbacks.current.onBusyChange?.(false);
     },
@@ -197,6 +201,8 @@ export function TruckLocationForm({
 
   function chooseLocation(next: EventLocation) {
     setResolvingLocation(false);
+    if (next.coordinates && isCoordinates(next.coordinates))
+      showFieldsSkeleton();
     setLocation(next);
     setFields(
       next.coordinates && isCoordinates(next.coordinates)
@@ -282,7 +288,7 @@ export function TruckLocationForm({
         compact
       />
       <div
-        className={`form-grid ${styles.fields} ${busy || resolvingLocation || fieldsUpdating ? styles.fieldsLoading : ''}`}
+        className={`form-grid ${styles.fields} ${resolvingLocation || fieldsUpdating ? styles.fieldsLoading : ''}`}
         aria-busy={busy || resolvingLocation || fieldsUpdating}
       >
         <label className="field">

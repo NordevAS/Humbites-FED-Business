@@ -57,7 +57,7 @@ function createTruckLocationPin() {
   const element = document.createElement('div');
   element.className = styles.truckLocationPin;
   element.setAttribute('aria-label', 'Truckens valgte posisjon');
-  element.innerHTML = `<svg viewBox="0 0 48 60" aria-hidden="true" focusable="false"><path class="${styles.pinShape}" d="M24 1C11.3 1 1 11.3 1 24c0 16 23 34 23 34s23-18 23-34C47 11.3 36.7 1 24 1Z"/><g transform="translate(15 13) scale(.75)" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h12v13H3zM15 10h4l3 4v4h-7M6 8h6v4H6"/><circle cx="7" cy="19" r="2"/><circle cx="18" cy="19" r="2"/></g></svg>`;
+  element.innerHTML = `<svg viewBox="0 0 48 60" aria-hidden="true" focusable="false"><path class="${styles.pinShape}" d="M24 1C11.3 1 1 11.3 1 24c0 16 23 34 23 34s23-18 23-34C47 11.3 36.7 1 24 1Z"/><g transform="translate(12 10) scale(1)" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h12v13H3zM15 10h4l3 4v4h-7M6 8h6v4H6"/><circle cx="7" cy="19" r="2"/><circle cx="18" cy="19" r="2"/></g></svg>`;
   return element;
 }
 async function post<T>(
