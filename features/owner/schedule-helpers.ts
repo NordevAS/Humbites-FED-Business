@@ -75,10 +75,18 @@ export function displayDate(
   date: string,
   options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long' },
 ) {
+  const parsed = new Date(`${date}T12:00:00Z`);
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+    !Number.isFinite(parsed.getTime()) ||
+    parsed.toISOString().slice(0, 10) !== date
+  ) {
+    return date || 'Ugyldig dato';
+  }
   return new Intl.DateTimeFormat('nb-NO', {
     ...options,
     timeZone: 'Europe/Oslo',
-  }).format(new Date(`${date}T12:00:00Z`));
+  }).format(parsed);
 }
 
 /** Gregorian Easter (Meeus/Jones/Butcher), used only to suggest optional owner-defined closures. */
