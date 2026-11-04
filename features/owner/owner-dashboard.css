@@ -65,10 +65,17 @@
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
   min-height: calc(100vh - 55px);
-  max-width: 1800px;
-  margin: auto;
+  width: 100%;
+  margin: 0;
 }
 .owner-sidebar {
+  position: sticky;
+  top: 0;
+  z-index: 25;
+  height: 100vh;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-y: auto;
   background: #251d16;
   color: #fff5e8;
   padding: 35px 22px 26px;
@@ -76,6 +83,7 @@
   flex-direction: column;
   align-self: stretch;
 }
+.owner-mobile-menu-toggle { display:none; }
 .owner-sidebar > .owner-wordmark {
   padding-inline: 12px;
 }
@@ -1082,26 +1090,63 @@
     display: block;
   }
   .owner-sidebar {
-    padding: 22px 20px 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    box-sizing: border-box;
+    padding: 22px 20px 18px;
+    height: auto;
+    max-height: calc(100vh - 55px);
+    overflow-y: visible;
+    align-self: start;
   }
   .owner-sidebar > .owner-wordmark {
+    grid-column: 1;
+    grid-row: 1;
     display: inline-block;
     padding: 0;
     font-size: 30px;
   }
   .owner-sidebar-label {
-    display: inline-block;
+    display: block;
+    grid-column: 1;
+    grid-row: 2;
     padding: 0;
-    margin-left: 14px;
+    margin: 4px 0 0;
     font-size: 8px;
   }
+  .owner-mobile-menu-toggle {
+    grid-column: 2;
+    grid-row: 1;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    color: #fff5e8;
+    background: transparent;
+    border: 1px solid #6c5948;
+    border-radius: 9px;
+    cursor: pointer;
+  }
   .owner-sidebar nav {
-    display: flex;
+    display: none;
+    grid-column: 1 / -1;
+    grid-row: 3;
     gap: 6px;
-    overflow-x: auto;
-    margin-top: 22px;
-    padding-bottom: 16px;
-    scrollbar-width: thin;
+    margin-top: 14px;
+    padding-bottom: 10px;
+  }
+  .owner-sidebar.is-mobile-open nav {
+    display: flex;
+    flex-direction: column;
+    overflow: visible;
+  }
+  .owner-sidebar.is-mobile-open {
+    max-height: calc(100vh - 55px);
+    overflow-y: auto;
   }
   .owner-sidebar nav button {
     flex-shrink: 0;
@@ -1115,13 +1160,16 @@
     height: 17px;
   }
   .owner-sidebar-bottom {
-    display: flex;
+    display: none;
+    grid-column: 1 / -1;
+    grid-row: 4;
     padding: 0;
     margin: 0;
     gap: 15px;
     justify-content: flex-end;
     border-top: 1px solid #5a4737;
   }
+  .owner-sidebar.is-mobile-open .owner-sidebar-bottom { display:flex; }
   .owner-sidebar-tip {
     display: none;
   }

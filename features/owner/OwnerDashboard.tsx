@@ -27,6 +27,8 @@ import {
   Users,
   Check,
   Coins,
+  Menu,
+  X,
 } from 'lucide-react';
 import { useConfirmation } from '@/components/ConfirmationProvider';
 import Link from '@/components/AppLink';
@@ -130,6 +132,7 @@ export function OwnerDashboard() {
     [],
   );
   const [tab, setTab] = useState<Tab>('overview');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -360,6 +363,7 @@ export function OwnerDashboard() {
     void guard(() => router.push(href));
   }
   function changeTab(next: Tab) {
+    setMobileMenuOpen(false);
     if (next === tab) return;
     void guard(() => {
       setTab(next);
@@ -565,7 +569,7 @@ export function OwnerDashboard() {
     );
   return (
     <main id="main" className="owner-portal owner-shell">
-      <aside className="owner-sidebar">
+      <aside className={`owner-sidebar ${mobileMenuOpen ? 'is-mobile-open' : ''}`}>
         <Link
           href="/"
           onClick={(e) => linkGuard(e, '/')}
@@ -575,7 +579,17 @@ export function OwnerDashboard() {
           humbites<span>.</span>
         </Link>
         <span className="owner-sidebar-label">BEDRIFTSPORTAL</span>
-        <nav aria-label="Bedriftsmeny">
+        <button
+          type="button"
+          className="owner-mobile-menu-toggle"
+          aria-label={mobileMenuOpen ? 'Lukk meny' : 'Åpne meny'}
+          aria-expanded={mobileMenuOpen}
+          aria-controls="owner-navigation"
+          onClick={() => setMobileMenuOpen((open) => !open)}
+        >
+          {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+        </button>
+        <nav id="owner-navigation" aria-label="Bedriftsmeny">
           {navigation.map(({ id, label, icon: NavIcon }) => (
             <button
               key={id}
@@ -593,11 +607,6 @@ export function OwnerDashboard() {
           ))}
         </nav>
         <div className="owner-sidebar-bottom">
-          <div className="owner-sidebar-tip">
-            <span aria-hidden="true">✳</span>
-            <strong>Klart for neste samling.</strong>
-            <p>Hold truckens opplysninger og kalender oppdatert.</p>
-          </div>
           <button
             disabled={busy || anyEditorBusy}
             onClick={() => void guard(() => void logout())}
