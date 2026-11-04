@@ -1,20 +1,20 @@
 # BED integration gaps
 
-This is a frontend-side inventory based on the current `Humbites-BED` checkout.
-It records missing or incomplete API contracts; it does not propose or make
-changes in BED. FED-Business can point to BED with `BED_API_URL` after
-`SHOWCASE_MODE=false`, but the current backend does not yet support the complete
-dashboard flow.
+This inventory tracks incomplete contracts between FED-Business and BED.
+Owner API calls use `BED_API_URL` even when the customer-facing showcase is
+enabled. Items marked as implemented in BED PR #218 remain unavailable to a
+running local or deployed backend until that branch is integrated and BED is
+restarted/redeployed.
 
 ## Required before the business dashboard can be used end to end
 
 | Dashboard need | Frontend request / expected contract | Current BED state |
 | --- | --- | --- |
-| Owner sign-in | `GET /v1/auth/csrf`, then `POST /v1/auth/login`; session verification at `GET /v1/auth/login-success` | Login routes exist, but no CSRF route or CSRF middleware is present. The frontend cannot complete its CSRF-protected login handshake. |
+| Owner sign-in | `GET /v1/auth/csrf`, then `POST /v1/auth/login`; session verification at `GET /v1/auth/login-success` | Session CSRF and profile response are implemented in BED PR #218. |
 | Dashboard summary | `GET /v1/me/businesses/:businessId/foodtrucks/:foodtruckId/overview` | No route or controller. |
 | Booking settings | `GET` and `PATCH /v1/me/businesses/:businessId/foodtrucks/:foodtruckId/booking-settings` | No route or controller. |
 | Schedule | `GET`/`PUT .../schedule` and `GET .../schedule-preview` | No routes or controllers. |
-| Menu read and assignment | `GET .../menu`, `GET .../menu-options`, and category CRUD at `.../menu-categories` | Menu write routes exist, but the truck route has no menu read or menu-options/category routes. The frontend needs categories, allergens, assignments, and item DTOs. |
+| Menu read and assignment | `GET .../menu`, `GET .../menu-options`, and category CRUD at `.../menu-categories` | Implemented in BED PR #218. Menu writes now accept `enabled` and `allergenIds`; categories are scoped to the business. |
 | Booking inbox and decisions | `GET .../bookings` with `page`, `limit`, `status`, `q`; booking detail and `POST .../:bookingId/{accept,decline,cancel}` | Routes exist, but list returns an empty stub and detail/decision controllers return placeholder data. Pagination and search are not implemented. |
 | Truck images | `GET/POST .../media/businesses/:businessId/foodtrucks/:foodtruckId/images`, plus delete and upload completion paths | BED has an authenticated upload route under `/me/businesses/.../foodtrucks/.../images`, but not the media API contract used by FED-Business (list, delete, menu-image upload, completion response and same-origin upload URL). |
 | Payments | `GET /v1/payments/config`, `GET /v1/payments/bookings/:id`, and capture/cancel/refund actions | No payment routes are mounted in BED. |
