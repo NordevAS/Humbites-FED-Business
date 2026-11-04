@@ -43,6 +43,7 @@ import {
 import { formatNok } from '@/domain';
 import { dateLabel } from '@/features/booking/QuoteSummary';
 import { SettingsForm } from './SettingsForm';
+import { TruckLocationForm } from './TruckLocationForm';
 import { OpeningHoursEditor } from './OpeningHoursEditor';
 import { MenuEditor, type OwnerItem } from './MenuEditor';
 import { ImageManager } from './ImageManager';
@@ -54,7 +55,18 @@ import {
 import './owner-dashboard.css';
 import { DateTile, Status, ownerStatus } from './BookingPresentation';
 
-type Option = { id: string | number; name?: string; businessName?: string };
+type Option = {
+  id: string | number;
+  name?: string;
+  businessName?: string;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postalCode?: string | null;
+  country?: string | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+};
 type User = { id: string | number; email: string; firstName?: string };
 type Tab = 'overview' | 'inbox' | 'calendar' | 'menu' | 'images' | 'settings';
 const navigation = [
@@ -126,6 +138,10 @@ export function OwnerDashboard() {
   const [notice, setNotice] = useState('');
   const [dirty, setDirty] = useState(false);
   const [editorBusy, setEditorBusy] = useState(false);
+  const [locationDirty, setLocationDirty] = useState(false);
+  const [locationBusy, setLocationBusy] = useState(false);
+  const hasUnsavedEditorChanges = dirty || locationDirty;
+  const anyEditorBusy = editorBusy || locationBusy;
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
@@ -315,9 +331,9 @@ export function OwnerDashboard() {
   }
   // In-portal navigation must settle unsaved edits before unmounting the editor.
   async function guard(task: () => void) {
-    if (busy || editorBusy) return;
+    if (busy || anyEditorBusy) return;
     if (
-      dirty &&
+      hasUnsavedEditorChanges &&
       !(await confirm({
         title: 'Forkaste endringene?',
         message:
@@ -327,11 +343,12 @@ export function OwnerDashboard() {
     )
       return;
     setDirty(false);
+    setLocationDirty(false);
     task();
   }
   function linkGuard(event: MouseEvent<HTMLAnchorElement>, href: string) {
     if (
-      (!dirty && !editorBusy) ||
+      (!hasUnsavedEditorChanges && !anyEditorBusy) ||
       event.button !== 0 ||
       event.metaKey ||
       event.ctrlKey ||
@@ -562,7 +579,7 @@ export function OwnerDashboard() {
           {navigation.map(({ id, label, icon: NavIcon }) => (
             <button
               key={id}
-              disabled={busy || editorBusy}
+              disabled={busy || anyEditorBusy}
               className={tab === id ? 'active' : ''}
               aria-current={tab === id ? 'page' : undefined}
               onClick={() => changeTab(id)}
@@ -582,7 +599,7 @@ export function OwnerDashboard() {
             <p>Hold truckens opplysninger og kalender oppdatert.</p>
           </div>
           <button
-            disabled={busy || editorBusy}
+            disabled={busy || anyEditorBusy}
             onClick={() => void guard(() => void logout())}
           >
             <LogOut size={18} /> Logg ut
@@ -602,7 +619,7 @@ export function OwnerDashboard() {
             <select
               aria-label="Bedrift"
               value={business}
-              disabled={busy || editorBusy || !businesses.length}
+              disabled={busy || anyEditorBusy || !businesses.length}
               onChange={(e) => {
                 const next = e.target.value;
                 void guard(() => {
@@ -628,7 +645,7 @@ export function OwnerDashboard() {
             <select
               aria-label="Foodtruck"
               value={truck}
-              disabled={busy || editorBusy || !trucks.length}
+              disabled={busy || anyEditorBusy || !trucks.length}
               onChange={(e) => {
                 const next = e.target.value;
                 void guard(() => {
@@ -666,7 +683,7 @@ export function OwnerDashboard() {
           </div>
           <button
             className="owner-refresh"
-            disabled={busy || editorBusy || loading || inboxLoading || !base}
+            disabled={busy || anyEditorBusy || loading || inboxLoading || !base}
             onClick={() => void action(refresh)}
           >
             <RefreshCw size={18} /> Oppdater
@@ -1197,17 +1214,30 @@ export function OwnerDashboard() {
                   />
                 )}
                 {tab === 'settings' && (
-                  <SettingsForm
-                    key={base}
-                    path={`${base}/booking-settings`}
-                    initial={settings}
-                    onDirtyChange={setDirty}
-                    onBusyChange={setEditorBusy}
-                    onSaved={() => {
-                      setNotice('Innstillingene er lagret.');
-                      void loadCore().catch((e) => setError(errorMessage(e)));
-                    }}
-                  />
+                  <>
+                    <TruckLocationForm
+                      key={`${base}-location`}
+                      path={base}
+                      initial={trucks.find((item) => String(item.id) === truck)}
+                      onDirtyChange={setLocationDirty}
+                      onBusyChange={setLocationBusy}
+                      onSaved={() => {
+                        setNotice('Truckens adresse og kartposisjon er lagret.');
+                        reloadCatalogue();
+                      }}
+                    />
+                    <SettingsForm
+                      key={base}
+                      path={`${base}/booking-settings`}
+                      initial={settings}
+                      onDirtyChange={setDirty}
+                      onBusyChange={setEditorBusy}
+                      onSaved={() => {
+                        setNotice('Innstillingene er lagret.');
+                        void loadCore().catch((e) => setError(errorMessage(e)));
+                      }}
+                    />
+                  </>
                 )}
                 {tab === 'menu' && (
                   <MenuEditor

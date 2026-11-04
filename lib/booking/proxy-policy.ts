@@ -64,6 +64,8 @@ export function resolveTarget(method: string, path: string): Target | null {
   const base = `me/businesses/${business}/foodtrucks${truck ? `/${truck}` : ''}`;
   if (!section && method === 'GET' && !truck)
     return { path: base, auth: 'owner' };
+  if (!section && method === 'PATCH' && truck)
+    return { path: base, auth: 'owner' };
   if (section === 'overview' && method === 'GET' && !item)
     return { path: `${base}/overview`, auth: 'owner' };
   if (
