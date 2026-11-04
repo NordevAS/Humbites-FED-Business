@@ -9,12 +9,14 @@ export function TimeRanges({
   onChange,
   onRemove,
   disabled,
+  errorFor,
 }: {
   value: OpeningInterval[];
   label: string;
   onChange: (rows: OpeningInterval[]) => void;
   onRemove: (index: number) => void;
   disabled: boolean;
+  errorFor?: (index: number, field: 'startMinute' | 'endMinute') => string | undefined;
 }) {
   const update = (index: number, row: OpeningInterval) =>
     onChange(value.map((item, i) => (i === index ? row : item)));
@@ -29,6 +31,7 @@ export function TimeRanges({
               required
               disabled={disabled}
               aria-label={`${label}, tidsrom ${index + 1}, fra`}
+              aria-invalid={!!errorFor?.(index, 'startMinute')}
               value={clockInput(row.startMinute)}
               onChange={(e) =>
                 update(index, {
@@ -37,6 +40,7 @@ export function TimeRanges({
                 })
               }
             />
+            <small className="schedule-field-warning" aria-live="polite">{errorFor?.(index, 'startMinute') ?? ''}</small>
           </label>
           <span className="schedule-range-dash" aria-hidden="true">
             –
@@ -48,6 +52,7 @@ export function TimeRanges({
               required
               disabled={disabled}
               aria-label={`${label}, tidsrom ${index + 1}, til`}
+              aria-invalid={!!errorFor?.(index, 'endMinute')}
               value={clockInput(row.endMinute)}
               onChange={(e) => {
                 const minute = parseClock(e.target.value);
@@ -60,6 +65,7 @@ export function TimeRanges({
                 });
               }}
             />
+            <small className="schedule-field-warning" aria-live="polite">{errorFor?.(index, 'endMinute') ?? ''}</small>
           </label>
           <label className="schedule-checkbox">
             <input

@@ -64,6 +64,7 @@ export function OpeningHoursEditor({
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
+  const editorRef = useRef<HTMLElement>(null);
   const today = osloTime(new Date()).date;
   const [month, setMonth] = useState(today.slice(0, 7));
   const [selectedDate, setSelectedDate] = useState(today);
@@ -141,7 +142,12 @@ export function OpeningHoursEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [previewKey, previewPath]);
   const currentPreview = preview?.key === previewKey ? preview.value : null;
-  const selectedDay = currentPreview?.days.find(
+  const [calendarYear, calendarMonth] = month.split('-').map(Number);
+  const daysInMonth = new Date(calendarYear, calendarMonth, 0).getDate();
+  const calendarLeadingDays =
+    (new Date(calendarYear, calendarMonth - 1, 1).getDay() + 6) % 7;
+  const calendarData = currentPreview ?? (preview?.value?.days[0]?.date.startsWith(`${month}-`) ? preview.value : null);
+  const selectedDay = calendarData?.days.find(
     (day) => day.date === selectedDate,
   );
   const holidays = useMemo(() => norwegianHolidays(holidayYear), [holidayYear]);
@@ -278,15 +284,15 @@ export function OpeningHoursEditor({
         ],
       }));
     }
-    setTimeout(
-      () =>
-        document
-          .querySelector<HTMLElement>(
-            `#schedule-exception-${existing < 0 ? draft.dateOverrides.length : existing} input`,
-          )
-          ?.focus(),
-      0,
-    );
+    setTimeout(() => {
+      const section = document.getElementById(
+        `schedule-exception-${existing < 0 ? draft.dateOverrides.length : existing}`,
+      );
+      const group = document.getElementById('schedule-exceptions');
+      if (group instanceof HTMLDetailsElement) group.open = true;
+      if (section instanceof HTMLDetailsElement) section.open = true;
+      section?.querySelector<HTMLInputElement>('input')?.focus();
+    }, 0);
   }
   function updateDate(index: number, patch: Partial<DateOverride>) {
     change((state) => ({
@@ -390,6 +396,13 @@ export function OpeningHoursEditor({
       const normalized = normalizeSchedule(result.data);
       setDraft(normalized);
       setBaseline(keyOf(normalized));
+      editorRef.current
+        ?.querySelectorAll<HTMLDetailsElement>(
+          'details[open]:not(.schedule-disclosure):not(.schedule-day-detail)',
+        )
+        .forEach((details) => {
+          details.open = false;
+        });
       setNotice(
         'Åpningstidene er lagret. Nye søk og forespørsler bruker den oppdaterte planen.',
       );
@@ -422,6 +435,21 @@ export function OpeningHoursEditor({
                     : 'Stengte datoer';
         return `${prefix}: ${/^(Number|Expected|Required|Array)/.test(issue.message) ? 'Kontroller at alle verdier er gyldige og innenfor grensene.' : issue.message}`;
       });
+  const fieldWarning = (path: (string | number)[]) => {
+    if (validation.success) return undefined;
+    const issue = validation.error.issues.find(
+      (item) =>
+        item.path.length === path.length &&
+        item.path.every((part, index) => path[index] === part),
+    );
+    if (!issue) return undefined;
+    const field = issue.path.at(-1);
+    return field === 'date' || field === 'from' || field === 'to'
+      ? 'Dato må være gyldig'
+      : field === 'startMinute' || field === 'endMinute'
+        ? 'Tid må være gyldig'
+        : 'Verdien må være gyldig';
+  };
   const dayReservations = (date: string) =>
     (currentPreview?.reservations ?? []).filter(
       (row) =>
@@ -445,7 +473,7 @@ export function OpeningHoursEditor({
     ) ?? [];
 
   return (
-    <section className="schedule-editor" aria-label="Åpningstider og kalender">
+    <section ref={editorRef} className="schedule-editor" aria-label="Åpningstider og kalender">
       <div className="schedule-intro">
         <div>
           <span className="eyebrow">DIN RYTME. DIN UKE.</span>
@@ -489,6 +517,9 @@ export function OpeningHoursEditor({
       )}
       <div className="schedule-status-row">
         <div className="schedule-status-card">
+          {!currentPreview && validation.success && !previewError ? (
+            <div className="schedule-status-card-skeleton" aria-label="Laster status" aria-busy="true"><i /><b /><span /><span /></div>
+          ) : <>
           <span>NÅ, ETTER {dirty ? 'UTKASTET' : 'LAGRET PLAN'}</span>
           <strong>
             {!validation.success
@@ -496,7 +527,7 @@ export function OpeningHoursEditor({
               : previewError
                 ? 'Kunne ikke beregne'
                 : !currentPreview
-                  ? 'Beregner …'
+                  ? <span className="schedule-value-skeleton" aria-label="Laster status" />
                   : !currentPreview.enabled
                     ? 'Forespørsler av'
                     : currentPreview.now.open
@@ -508,8 +539,12 @@ export function OpeningHoursEditor({
               ? 'Slå på forespørsler under priser og innstillinger.'
               : 'Viser serveringstidene. Kalender og kapasitet sjekkes også for hver forespørsel.'}
           </p>
+          </>}
         </div>
         <div className="schedule-status-card is-yellow">
+          {!currentPreview && validation.success && !previewError ? (
+            <div className="schedule-status-card-skeleton" aria-label="Laster neste åpning" aria-busy="true"><i /><b /><span /><span /></div>
+          ) : <>
           <span>NESTE ÅPNING</span>
           <strong>
             {!validation.success
@@ -517,7 +552,7 @@ export function OpeningHoursEditor({
               : previewError
                 ? 'Kunne ikke beregne'
                 : !currentPreview
-                  ? 'Beregner …'
+                  ? <span className="schedule-value-skeleton" aria-label="Laster neste åpning" />
                   : !currentPreview.enabled
                     ? 'Forespørsler av'
                     : currentPreview.now.open
@@ -535,28 +570,32 @@ export function OpeningHoursEditor({
                 ? `Ingen åpning funnet frem til ${displayDate(currentPreview.nextOpeningSearchThrough, { day: 'numeric', month: 'long', year: 'numeric' })}.`
                 : 'Forhåndsvisningen viser dine egne timer, ikke en garanti om ledig kapasitet.'}
           </p>
+          </>}
         </div>
       </div>
-      {currentPreview && (
+      {preview?.value && (
         <p className="schedule-snapshot">
           Status oppdatert kl.{' '}
           {new Intl.DateTimeFormat('nb-NO', {
             hour: '2-digit',
             minute: '2-digit',
             timeZone: 'Europe/Oslo',
-          }).format(new Date(currentPreview.generatedAt))}
+          }).format(new Date(preview.value.generatedAt))}
           . Bruk «Oppdater» for fersk status og nye reservasjoner.
         </p>
       )}
       <div className="schedule-layout">
-        <section className="schedule-card schedule-week">
-          <div className="schedule-section-heading">
+        <div className="schedule-main-column">
+        <details className="schedule-card schedule-disclosure schedule-week">
+          <summary className="schedule-section-heading schedule-disclosure-heading">
             <span className="schedule-number">01</span>
             <div>
-              <h3>Den vanlige uken</h3>
+              <h3>Faste åpningstider</h3>
               <p>Flere serveringer samme dag? Legg til flere tidsrom.</p>
             </div>
-          </div>
+            <Icon name="chevron" size={20} />
+          </summary>
+          <div className="schedule-disclosure-content">
           <div className="schedule-preset">
             <label>
               <span>Start med et forslag</span>
@@ -595,25 +634,37 @@ export function OpeningHoursEditor({
                   ),
                 }));
               return (
-                <div
+                <details
                   className={`schedule-day ${mode === 'closed' ? 'is-closed' : ''}`}
                   key={day.id}
                 >
-                  <div className="schedule-day-heading">
+                  <summary className="schedule-day-heading">
                     <strong>{day.name}</strong>
-                    <select
-                      aria-label={`Åpningsstatus ${day.name.toLowerCase()}`}
-                      disabled={busy}
-                      value={mode}
-                      onChange={(e) =>
-                        void changeDayMode(day.id, e.target.value)
-                      }
-                    >
-                      <option value="closed">Stengt</option>
-                      <option value="open">Egne tider</option>
-                      <option value="all-day">Døgnåpent</option>
-                    </select>
-                  </div>
+                    <span className="schedule-day-status">
+                      {mode === 'closed'
+                        ? 'Stengt'
+                        : mode === 'all-day'
+                          ? 'Døgnåpent'
+                          : rows.map(intervalLabel).join(' · ')}
+                    </span>
+                    <Icon name="chevron" size={18} />
+                  </summary>
+                  <div className="schedule-day-content">
+                    <label className="schedule-day-mode">
+                      <span>Åpningsstatus</span>
+                      <select
+                        aria-label={`Åpningsstatus ${day.name.toLowerCase()}`}
+                        disabled={busy}
+                        value={mode}
+                        onChange={(e) =>
+                          void changeDayMode(day.id, e.target.value)
+                        }
+                      >
+                        <option value="closed">Stengt</option>
+                        <option value="open">Egne tider</option>
+                        <option value="all-day">Døgnåpent</option>
+                      </select>
+                    </label>
                   {mode === 'open' ? (
                     <TimeRanges
                       value={rows}
@@ -621,6 +672,13 @@ export function OpeningHoursEditor({
                       disabled={busy}
                       onChange={apply}
                       onRemove={(index) => void removeRange(rows, index, apply)}
+                      errorFor={(range, field) => {
+                        const row = rows[range];
+                        const index = draft.openingHours.findIndex(
+                          (item) => item.weekday === day.id && item.startMinute === row?.startMinute,
+                        );
+                        return fieldWarning(['openingHours', index, field]);
+                      }}
                     />
                   ) : (
                     <p className="schedule-day-summary">
@@ -629,7 +687,8 @@ export function OpeningHoursEditor({
                         : 'Ingen servering starter denne dagen'}
                     </p>
                   )}
-                </div>
+                  </div>
+                </details>
               );
             })}
           </div>
@@ -678,229 +737,22 @@ export function OpeningHoursEditor({
               Kopier tider
             </button>
           </div>
-        </section>
-        <aside className="schedule-preview schedule-card">
-          <div className="schedule-section-heading">
-            <span className="schedule-number">↗</span>
-            <div>
-              <h3>Se kalenderen</h3>
-              <p>
-                {dirty ? 'Forhåndsvisning av ulagret utkast' : 'Lagret plan'} ·
-                Europe/Oslo
-              </p>
-            </div>
           </div>
-          <div className="schedule-month-nav">
-            <button
-              type="button"
-              className="schedule-icon-button"
-              aria-label="Forrige måned"
-              onClick={() => goMonth(monthShift(month, -1))}
-            >
-              <Icon name="back" size={18} />
-            </button>
-            <h4>
-              {displayDate(`${month}-01`, { month: 'long', year: 'numeric' })}
-            </h4>
-            <button
-              type="button"
-              className="schedule-icon-button"
-              aria-label="Neste måned"
-              onClick={() => goMonth(monthShift(month, 1))}
-            >
-              <Icon name="arrow" size={18} />
-            </button>
-          </div>
-          <button
-            type="button"
-            className="schedule-add"
-            onClick={() => {
-              goMonth(today.slice(0, 7));
-              setSelectedDate(today);
-            }}
-          >
-            Gå til i dag
-          </button>
-          {previewError ? (
-            <div className="service-banner error" role="alert">
-              <p>{previewError}</p>
-              <button
-                type="button"
-                className="schedule-add"
-                onClick={() => setRefresh((value) => value + 1)}
-              >
-                Prøv forhåndsvisning igjen
-              </button>
-            </div>
-          ) : !validation.success ? (
-            <p className="schedule-empty">
-              Rett opp ukeplanen for å se kalenderen.
-            </p>
-          ) : !currentPreview ? (
-            <p className="schedule-empty" role="status">
-              Oppdaterer kalenderen …
-            </p>
-          ) : (
-            <>
-              <div
-                className="schedule-calendar"
-                aria-label={`Kalender for ${displayDate(`${month}-01`, { month: 'long', year: 'numeric' })}`}
-              >
-                {weekDays.map((day) => (
-                  <span className="schedule-calendar-weekday" key={day.id}>
-                    {day.short}
-                  </span>
-                ))}
-                {Array.from(
-                  { length: (currentPreview.days[0].weekday + 6) % 7 },
-                  (_, index) => (
-                    <span key={`blank-${index}`} aria-hidden="true" />
-                  ),
-                )}
-                {currentPreview.days.map((day) => (
-                  <button
-                    type="button"
-                    key={day.date}
-                    className={`schedule-calendar-day ${day.closed ? 'is-closed' : 'is-open'} ${day.source !== 'weekly' ? 'is-special' : ''} ${day.date === today ? 'is-today' : ''}`}
-                    aria-label={`${displayDate(day.date, { weekday: 'long', day: 'numeric', month: 'long' })}: ${day.closed ? 'stengt' : day.intervals.map(intervalLabel).join(', ')}${day.label ? `, ${day.label}` : ''}${dayReservations(day.date).length ? `, ${dayReservations(day.date).length} godkjente reservasjoner` : ''}`}
-                    aria-pressed={selectedDate === day.date}
-                    onClick={() => {
-                      setSelectedDate(day.date);
-                      setDateToAdd(day.date);
-                    }}
-                  >
-                    <span>{Number(day.date.slice(-2))}</span>
-                    <i aria-hidden="true" />
-                    {dayReservations(day.date).length > 0 && (
-                      <b
-                        className="schedule-booking-marker"
-                        aria-hidden="true"
-                      />
-                    )}
-                  </button>
-                ))}
-              </div>
-              <div className="schedule-calendar-legend">
-                <span>
-                  <i className="open-dot" /> Åpent
-                </span>
-                <span>
-                  <i className="closed-dot" /> Stengt
-                </span>
-                <span>
-                  <i className="special-dot" /> Unntak / ferie
-                </span>
-                <span>
-                  <i className="booked-dot" /> Godkjent reservasjon
-                </span>
-              </div>
-              {selectedDay && (
-                <div className="schedule-day-detail" aria-live="polite">
-                  <span className="eyebrow">
-                    {sourceLabels[selectedDay.source]}
-                  </span>
-                  <h4>
-                    {displayDate(selectedDate, {
-                      weekday: 'long',
-                      day: 'numeric',
-                      month: 'long',
-                    })}
-                  </h4>
-                  {selectedDay.label && (
-                    <p>
-                      <strong>{selectedDay.label}</strong>
-                    </p>
-                  )}
-                  <p>
-                    {selectedDay.closed
-                      ? 'Stengt hele dagen'
-                      : selectedDay.intervals.map(intervalLabel).join(' · ')}
-                  </p>
-                  {selectedReservations.length > 0 && (
-                    <div className="schedule-reservations">
-                      <strong>
-                        {selectedReservations.length} godkjente{' '}
-                        {selectedReservations.length === 1
-                          ? 'reservasjon'
-                          : 'reservasjoner'}
-                      </strong>
-                      <ul>
-                        {selectedReservations.map((row) => (
-                          <li key={row.bookingId}>
-                            <span>
-                              Servering: {instantLabel(row.startsAt)} –{' '}
-                              {instantLabel(row.endsAt)}
-                            </span>
-                            <small>
-                              Opptatt med rigg/rydding:{' '}
-                              {instantLabel(row.reservedStartsAt)} –{' '}
-                              {instantLabel(row.reservedEndsAt)}
-                            </small>
-                            <small>Referanse {row.bookingId.slice(0, 8)}</small>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {selectedConflicts.length > 0 && (
-                    <p className="schedule-conflict">
-                      {selectedConflicts.length} godkjente bookinger berøres av
-                      planen denne dagen.
-                    </p>
-                  )}
-                  <button
-                    type="button"
-                    disabled={busy}
-                    className="schedule-add"
-                    onClick={() => addDate(selectedDate)}
-                  >
-                    Tilpass denne datoen →
-                  </button>
-                </div>
-              )}
-              {currentPreview.conflicts.length > 0 && (
-                <div className="service-banner error">
-                  <strong>
-                    {currentPreview.conflicts.length} fremtidige, godkjente
-                    bookinger krever oppfølging
-                  </strong>
-                  <p>
-                    Varslet gjelder alle fremtidige datoer, ikke bare måneden
-                    som vises. Bookingene beholdes og avlyses ikke selv om du
-                    endrer åpningstidene. Se hver forespørsel før du avklarer
-                    endringen.
-                  </p>
-                  <ul>
-                    {currentPreview.conflicts.map((row) => (
-                      <li key={row.bookingId}>
-                        {displayDate(osloTime(new Date(row.startsAt)).date)} ·
-                        referanse {row.bookingId.slice(0, 8)}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </>
-          )}
-          <p className="schedule-help">
-            Ferie og stengte datoer går foran ukeplanen. Et datounntak erstatter
-            hele datoen, også nattåpning fra dagen før. Rigg før og etter
-            servering reserverer tid, men trenger ikke ligge innenfor
-            serveringstidene.
-          </p>
-        </aside>
-      </div>
-      <section className="schedule-card">
-        <div className="schedule-section-heading">
+        </details>
+
+      <details id="schedule-exceptions" className="schedule-card schedule-disclosure">
+        <summary className="schedule-section-heading schedule-disclosure-heading">
           <span className="schedule-number">02</span>
           <div>
-            <h3>Noen dager er annerledes</h3>
+            <h3>Spesielle åpningstider</h3>
             <p>
               Egne åpningstider eller helt stengt. Navngi gjerne dagen:
               festival, privat selskap eller helligdag.
             </p>
           </div>
-        </div>
+          <Icon name="chevron" size={20} />
+        </summary>
+        <div className="schedule-disclosure-content">
         <div className="schedule-add-date">
           <label>
             <span>Velg en dato</span>
@@ -928,11 +780,30 @@ export function OpeningHoursEditor({
         )}
         <div className="schedule-exceptions">
           {draft.dateOverrides.map((row, index) => (
-            <article
+            <details
               className="schedule-exception"
               id={`schedule-exception-${index}`}
               key={index}
             >
+              <summary className="schedule-exception-summary">
+                <strong>
+                  {displayDate(row.date, {
+                    weekday: 'short',
+                    day: 'numeric',
+                    month: 'short',
+                  })}
+                  {row.label ? ` · ${row.label}` : ''}
+                </strong>
+                <span>
+                  {row.closed
+                    ? 'Stengt'
+                    : dayMode(row.intervals) === 'all-day'
+                      ? 'Døgnåpent'
+                      : row.intervals.map(intervalLabel).join(' · ')}
+                </span>
+                <Icon name="chevron" size={18} />
+              </summary>
+              <div className="schedule-exception-content">
               <div className="schedule-exception-heading">
                 <label>
                   <span>Dato</span>
@@ -941,10 +812,12 @@ export function OpeningHoursEditor({
                     required
                     disabled={busy}
                     value={row.date}
+                    aria-invalid={!!fieldWarning(['dateOverrides', index, 'date'])}
                     onChange={(e) =>
                       updateDate(index, { date: e.target.value })
                     }
                   />
+                  <small className="schedule-field-warning" aria-live="polite">{fieldWarning(['dateOverrides', index, 'date']) ?? ''}</small>
                 </label>
                 <label>
                   <span>Navn / merknad</span>
@@ -957,6 +830,7 @@ export function OpeningHoursEditor({
                       updateDate(index, { label: e.target.value })
                     }
                   />
+                  <small className="schedule-field-warning" aria-hidden="true"> </small>
                 </label>
                 <label>
                   <span>Servering</span>
@@ -969,6 +843,7 @@ export function OpeningHoursEditor({
                     <option value="open">Egne tider</option>
                     <option value="all-day">Døgnåpent</option>
                   </select>
+                  <small className="schedule-field-warning" aria-hidden="true"> </small>
                 </label>
                 <button
                   type="button"
@@ -995,6 +870,7 @@ export function OpeningHoursEditor({
                   label={`Datounntak ${row.date}`}
                   disabled={busy}
                   onChange={(intervals) => updateDate(index, { intervals })}
+                  errorFor={(range, field) => fieldWarning(['dateOverrides', index, 'intervals', range, field])}
                   onRemove={(range) =>
                     void removeRange(row.intervals, range, (intervals) =>
                       updateDate(index, {
@@ -1005,7 +881,8 @@ export function OpeningHoursEditor({
                   }
                 />
               )}
-            </article>
+              </div>
+            </details>
           ))}
         </div>
         {draft.closedDates.length > 0 && (
@@ -1115,25 +992,38 @@ export function OpeningHoursEditor({
             </button>
           </div>
         </details>
-      </section>
-      <section className="schedule-card">
-        <div className="schedule-section-heading">
+        </div>
+      </details>
+      <details className="schedule-card schedule-disclosure">
+        <summary className="schedule-section-heading schedule-disclosure-heading">
           <span className="schedule-number">03</span>
           <div>
-            <h3>Plass til en pause</h3>
+            <h3>Stengte perioder</h3>
             <p>
               Ferie, vedlikehold eller et annet oppdrag. Begge datoene er
               inkludert, og perioden overstyrer alle åpningstider.
             </p>
           </div>
-        </div>
+          <Icon name="chevron" size={20} />
+        </summary>
+        <div className="schedule-disclosure-content">
         {!draft.vacationRanges.length && (
           <p className="schedule-empty">
             Ingen stengte perioder. Legg til en når du trenger en pause.
           </p>
         )}
         {draft.vacationRanges.map((row, index) => (
-          <div className="schedule-vacation" key={index}>
+          <details
+            className="schedule-vacation"
+            id={`schedule-vacation-${index}`}
+            key={index}
+          >
+            <summary className="schedule-vacation-summary">
+              <strong>{row.label || `${row.from} – ${row.to}`}</strong>
+              <span>{row.label ? `${row.from} – ${row.to}` : 'Stengt'}</span>
+              <Icon name="chevron" size={18} />
+            </summary>
+            <div className="schedule-vacation-content">
             <label>
               <span>Fra og med</span>
               <input
@@ -1141,6 +1031,7 @@ export function OpeningHoursEditor({
                 required
                 disabled={busy}
                 value={row.from}
+                aria-invalid={!!fieldWarning(['vacationRanges', index, 'from'])}
                 onChange={(e) =>
                   change((state) => ({
                     ...state,
@@ -1150,6 +1041,7 @@ export function OpeningHoursEditor({
                   }))
                 }
               />
+              <small className="schedule-field-warning" aria-live="polite">{fieldWarning(['vacationRanges', index, 'from']) ?? ''}</small>
             </label>
             <label>
               <span>Til og med</span>
@@ -1158,6 +1050,7 @@ export function OpeningHoursEditor({
                 required
                 disabled={busy}
                 value={row.to}
+                aria-invalid={!!fieldWarning(['vacationRanges', index, 'to'])}
                 onChange={(e) =>
                   change((state) => ({
                     ...state,
@@ -1167,6 +1060,7 @@ export function OpeningHoursEditor({
                   }))
                 }
               />
+              <small className="schedule-field-warning" aria-live="polite">{fieldWarning(['vacationRanges', index, 'to']) ?? ''}</small>
             </label>
             <label>
               <span>Navn på perioden</span>
@@ -1184,6 +1078,7 @@ export function OpeningHoursEditor({
                   }))
                 }
               />
+              <small className="schedule-field-warning" aria-hidden="true"> </small>
             </label>
             <button
               type="button"
@@ -1208,13 +1103,15 @@ export function OpeningHoursEditor({
             >
               <Icon name="close" size={18} />
             </button>
-          </div>
+            </div>
+          </details>
         ))}
         <button
           type="button"
           className="schedule-add"
           disabled={busy || draft.vacationRanges.length >= 100}
-          onClick={() =>
+          onClick={() => {
+            const index = draft.vacationRanges.length;
             change((state) => ({
               ...state,
               vacationRanges: [
@@ -1225,24 +1122,34 @@ export function OpeningHoursEditor({
                   label: '',
                 },
               ],
-            }))
-          }
+            }));
+            setTimeout(() => {
+              const section = document.getElementById(
+                `schedule-vacation-${index}`,
+              );
+              if (section instanceof HTMLDetailsElement) section.open = true;
+              section?.querySelector<HTMLInputElement>('input')?.focus();
+            }, 0);
+          }}
         >
           + Legg til stengt periode
         </button>
-      </section>
-      <section className="schedule-card">
-        <div className="schedule-section-heading">
+        </div>
+      </details>
+      <details className="schedule-card schedule-disclosure">
+        <summary className="schedule-section-heading schedule-disclosure-heading">
           <span className="schedule-number">04</span>
           <div>
-            <h3>Litt tid til å planlegge</h3>
+            <h3>Bestillingsfrister</h3>
             <p>
               Velg hvor tidlig og hvor langt frem i tid nye oppdrag kan starte.
               Fristene kontrolleres også på nytt når du godkjenner
               forespørselen.
             </p>
           </div>
-        </div>
+          <Icon name="chevron" size={20} />
+        </summary>
+        <div className="schedule-disclosure-content">
         <div className="schedule-booking-window">
           <label>
             <span>Minste varsel (timer)</span>
@@ -1263,6 +1170,7 @@ export function OpeningHoursEditor({
                 }))
               }
             />
+            <small className="schedule-field-warning" aria-live="polite">{fieldWarning(['minimumNoticeHours']) ?? ''}</small>
             <small>0 betyr ingen ekstra ventetid.</small>
           </label>
           <label>
@@ -1283,6 +1191,7 @@ export function OpeningHoursEditor({
                 }))
               }
             />
+            <small className="schedule-field-warning" aria-live="polite">{fieldWarning(['maximumAdvanceDays']) ?? ''}</small>
             <small>La feltet stå tomt for ingen øvre grense.</small>
           </label>
         </div>
@@ -1300,15 +1209,236 @@ export function OpeningHoursEditor({
               : 'Ingen siste startdato satt.'}
           </p>
         )}
-      </section>
-      <div className={`schedule-savebar ${dirty ? 'is-dirty' : ''}`}>
+        </div>
+      </details>
+        </div>
+        <aside className="schedule-preview schedule-card">
+          <div className="schedule-section-heading">
+            <span className="schedule-number schedule-calendar-icon" aria-hidden="true">
+              <Icon name="calendar" size={18} />
+            </span>
+            <div>
+              <h3>Kalender</h3>
+              <p>
+                {dirty ? 'Forhåndsvisning av ulagret utkast' : 'Lagret plan'} ·
+                Europe/Oslo
+              </p>
+            </div>
+          </div>
+          <div className="schedule-month-nav">
+            <button
+              type="button"
+              className="schedule-icon-button"
+              aria-label="Forrige måned"
+              onClick={() => goMonth(monthShift(month, -1))}
+            >
+              <Icon name="back" size={18} />
+            </button>
+            <h4>{displayDate(`${month}-01`, { month: 'long', year: 'numeric' })}</h4>
+            <button
+              type="button"
+              className="schedule-icon-button"
+              aria-label="Neste måned"
+              onClick={() => goMonth(monthShift(month, 1))}
+            >
+              <Icon name="arrow" size={18} />
+            </button>
+          </div>
+          <button
+            type="button"
+            className="schedule-add"
+            onClick={() => {
+              goMonth(today.slice(0, 7));
+              setSelectedDate(today);
+            }}
+          >
+            Gå til i dag
+          </button>
+          {previewError ? (
+            <div className="service-banner error" role="alert">
+              <p>{previewError}</p>
+              <button
+                type="button"
+                className="schedule-add"
+                onClick={() => setRefresh((value) => value + 1)}
+              >
+                Prøv forhåndsvisning igjen
+              </button>
+            </div>
+          ) : !calendarData ? (
+              <div className="schedule-calendar-loading" role="status" aria-label="Kalenderforhåndsvisning" aria-busy="true">
+              <div className="schedule-calendar schedule-calendar-skeleton" aria-hidden="true">
+                {weekDays.map((day) => <span className="schedule-calendar-weekday" key={day.id}>{day.short}</span>)}
+                  {Array.from({ length: calendarLeadingDays }, (_, index) => <span key={`skeleton-blank-${index}`} aria-hidden="true" />)}
+                  {Array.from({ length: daysInMonth }, (_, index) => <span className="schedule-calendar-skeleton-day" key={index} />)}
+              </div>
+                <div className="schedule-calendar-legend" aria-hidden="true">
+                  <span><i className="open-dot" /> Åpent</span>
+                  <span><i className="closed-dot" /> Stengt</span>
+                  <span><i className="special-dot" /> Unntak / ferie</span>
+                  <span><i className="booked-dot" /> Godkjent reservasjon</span>
+                </div>
+                <div className="schedule-day-detail schedule-day-detail-skeleton" aria-hidden="true"><strong>Dagens åpningstider og reservasjoner</strong><span /><span /><span /></div>
+            </div>
+          ) : (
+            <>
+              <div
+                className="schedule-calendar"
+                aria-label={`Kalender for ${displayDate(`${month}-01`, { month: 'long', year: 'numeric' })}`}
+              >
+                {weekDays.map((day) => (
+                  <span className="schedule-calendar-weekday" key={day.id}>
+                    {day.short}
+                  </span>
+                ))}
+                {Array.from(
+                  { length: (calendarData.days[0].weekday + 6) % 7 },
+                  (_, index) => (
+                    <span key={`blank-${index}`} aria-hidden="true" />
+                  ),
+                )}
+                {calendarData.days.map((day) => (
+                  <button
+                    type="button"
+                    key={day.date}
+                    className={`schedule-calendar-day ${!validation.success ? 'is-invalid' : ''} ${day.closed ? 'is-closed' : 'is-open'} ${day.source !== 'weekly' ? 'is-special' : ''} ${day.date === today ? 'is-today' : ''}`}
+                    aria-label={`${displayDate(day.date, { weekday: 'long', day: 'numeric', month: 'long' })}: ${day.closed ? 'stengt' : day.intervals.map(intervalLabel).join(', ')}${day.label ? `, ${day.label}` : ''}${dayReservations(day.date).length ? `, ${dayReservations(day.date).length} godkjente reservasjoner` : ''}`}
+                    aria-pressed={selectedDate === day.date}
+                    disabled={!validation.success}
+                    onClick={() => {
+                      setSelectedDate(day.date);
+                      setDateToAdd(day.date);
+                    }}
+                  >
+                    <span>{Number(day.date.slice(-2))}</span>
+                  <i className="schedule-day-status-dot" aria-hidden="true" />
+                    {dayReservations(day.date).length > 0 && (
+                      <b
+                        className="schedule-booking-marker"
+                        aria-hidden="true"
+                      />
+                    )}
+                  </button>
+                ))}
+              </div>
+              <div className="schedule-calendar-legend">
+                <span>
+                  <i className="open-dot" /> Åpent
+                </span>
+                <span>
+                  <i className="closed-dot" /> Stengt
+                </span>
+                <span>
+                  <i className="special-dot" /> Unntak / ferie
+                </span>
+                <span>
+                  <i className="booked-dot" /> Godkjent reservasjon
+                </span>
+              </div>
+              {selectedDay && (
+                <details className="schedule-day-detail" aria-live="polite" open>
+                  <summary>
+                    {displayDate(selectedDate, {
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'long',
+                    })}
+                    <Icon name="chevron" size={18} />
+                  </summary>
+                  <div className="schedule-day-detail-content">
+                  <span className="eyebrow">
+                    {sourceLabels[selectedDay.source]}
+                  </span>
+                  <h4>Dagens åpningstider og reservasjoner</h4>
+                  {selectedDay.label && (
+                    <p>
+                      <strong>{selectedDay.label}</strong>
+                    </p>
+                  )}
+                  <p>
+                    {selectedDay.closed
+                      ? 'Stengt hele dagen'
+                      : selectedDay.intervals.map(intervalLabel).join(' · ')}
+                  </p>
+                  {selectedReservations.length > 0 && (
+                    <div className="schedule-reservations">
+                      <strong>
+                        {selectedReservations.length} godkjente{' '}
+                        {selectedReservations.length === 1
+                          ? 'reservasjon'
+                          : 'reservasjoner'}
+                      </strong>
+                      <ul>
+                        {selectedReservations.map((row) => (
+                          <li key={row.bookingId}>
+                            <span>
+                              Servering: {instantLabel(row.startsAt)} –{' '}
+                              {instantLabel(row.endsAt)}
+                            </span>
+                            <small>
+                              Opptatt med rigg/rydding:{' '}
+                              {instantLabel(row.reservedStartsAt)} –{' '}
+                              {instantLabel(row.reservedEndsAt)}
+                            </small>
+                            <small>Referanse {row.bookingId.slice(0, 8)}</small>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {selectedConflicts.length > 0 && (
+                    <p className="schedule-conflict">
+                      {selectedConflicts.length} godkjente bookinger berøres av
+                      planen denne dagen.
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    disabled={busy}
+                    className="schedule-add"
+                    onClick={() => addDate(selectedDate)}
+                  >
+                    Tilpass denne datoen →
+                  </button>
+                  </div>
+                </details>
+              )}
+              {calendarData.conflicts.length > 0 && (
+                <div className="service-banner error">
+                  <strong>
+                    {calendarData.conflicts.length} fremtidige, godkjente
+                    bookinger krever oppfølging
+                  </strong>
+                  <p>
+                    Varslet gjelder alle fremtidige datoer, ikke bare måneden
+                    som vises. Bookingene beholdes og avlyses ikke selv om du
+                    endrer åpningstidene. Se hver forespørsel før du avklarer
+                    endringen.
+                  </p>
+                  <ul>
+                    {calendarData.conflicts.map((row) => (
+                      <li key={row.bookingId}>
+                        {displayDate(osloTime(new Date(row.startsAt)).date)} ·
+                        referanse {row.bookingId.slice(0, 8)}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </>
+          )}
+          <p className="schedule-help">
+            Ferie og stengte datoer går foran ukeplanen. Et datounntak erstatter
+            hele datoen, også nattåpning fra dagen før. Rigg før og etter
+            servering reserverer tid, men trenger ikke ligge innenfor
+            serveringstidene.
+          </p>
+        </aside>
+      </div>
+      {dirty && <div className="schedule-savebar is-dirty">
         <div>
-          <strong>{dirty ? 'Ulagrede endringer' : 'Planen er lagret'}</strong>
-          <span>
-            {dirty
-              ? 'Forhåndsvisningen viser utkastet ditt. Lagre for å ta det i bruk.'
-              : 'Endringer i timer og datoer gjelder nye forespørsler etter lagring.'}
-          </span>
+          <strong>Endringene er ikke lagret</strong>
+          <span>Lagre for å bruke den oppdaterte planen på nye forespørsler.</span>
         </div>
         <div>
           <button
@@ -1322,14 +1452,14 @@ export function OpeningHoursEditor({
           <button
             type="button"
             className="button button-primary"
-            disabled={busy || !dirty}
+            disabled={busy || !dirty || !validation.success}
             onClick={() => void save()}
           >
             {busy ? 'Lagrer …' : 'Lagre åpningstider'}
             <Icon name="check" size={18} />
           </button>
         </div>
-      </div>
+      </div>}
     </section>
   );
 }
