@@ -112,6 +112,7 @@ export function TravelMap({
   const [lookupPending, setLookupPending] = useState(false);
   const pendingPoint = useRef<EventLocation['coordinates']>(undefined);
   const previewMarker = useRef<mapboxgl.Marker | null>(null);
+  const selectedLocationMarker = useRef<mapboxgl.Marker | null>(null);
   const locationAction = useRef(0);
   const locationLabel = useRef(location?.label);
   const catalogue = useMemo(
@@ -135,18 +136,49 @@ export function TravelMap({
   const markers = useRef<mapboxgl.Marker[]>([]);
   const onLocationRef = useRef(onLocationChange);
   const onLocationLookupPendingRef = useRef(onLocationLookupPending);
+  const locationRef = useRef(location);
+  locationRef.current = location;
   const longitude = location?.coordinates?.longitude;
   const latitude = location?.coordinates?.latitude;
   const clearPreviewMarker = () => {
     previewMarker.current?.remove();
     previewMarker.current = null;
   };
-  const finishPendingLookup = (pending: boolean) => {
+  const setLocationMarker = (point: {
+    longitude: number;
+    latitude: number;
+  }) => {
+    const instance = map.current;
+    const gl = library.current;
+    if (!instance || !gl || mapState !== 'ready') return;
+    clearPreviewMarker();
+    selectedLocationMarker.current?.remove();
+    const element = document.createElement('div');
+    element.className = styles.eventMarker;
+    element.textContent = '●';
+    element.setAttribute('aria-label', 'Truckens valgte posisjon');
+    selectedLocationMarker.current = new gl.Marker({
+      element,
+      anchor: 'bottom',
+    })
+      .setLngLat([point.longitude, point.latitude])
+      .addTo(instance);
+    instance.jumpTo({ center: [point.longitude, point.latitude], zoom: 16 });
+  };
+  const finishPendingLookup = (pending: boolean, resolved = false) => {
     setLookupPending(pending);
     onLocationLookupPendingRef.current?.(pending);
     if (!pending) {
       pendingPoint.current = undefined;
-      clearPreviewMarker();
+      if (resolved && previewMarker.current) {
+        selectedLocationMarker.current?.remove();
+        selectedLocationMarker.current = previewMarker.current;
+        previewMarker.current = null;
+      } else {
+        clearPreviewMarker();
+        const saved = locationRef.current?.coordinates;
+        if (saved && isCoordinates(saved)) setLocationMarker(saved);
+      }
     }
   };
   const cancelReverse = () => {
@@ -162,6 +194,7 @@ export function TravelMap({
     const gl = library.current;
     if (!instance || !gl || mapState !== 'ready') return;
     clearPreviewMarker();
+    selectedLocationMarker.current?.remove();
     const element = document.createElement('div');
     element.className = styles.eventMarker;
     element.textContent = '●';
@@ -179,11 +212,15 @@ export function TravelMap({
     setLocating(false);
     pendingPoint.current = point;
     previewPoint(point);
+    const resolved = { current: false };
     void mapSelection.select(
       point,
-      (next) => onLocationRef.current?.(next),
+      (next) => {
+        resolved.current = true;
+        onLocationRef.current?.(next);
+      },
       setReverseMessage,
-      finishPendingLookup,
+      (pending) => finishPendingLookup(pending, resolved.current),
     );
   };
   const useMyPosition = () => {
@@ -401,17 +438,7 @@ export function TravelMap({
       typeof latitude === 'number' &&
       isCoordinates({ longitude, latitude })
     ) {
-      const element = document.createElement('div');
-      element.className = styles.eventMarker;
-      element.textContent = '●';
-      element.setAttribute('aria-label', 'Arrangementets sted');
-      element.addEventListener('click', (event) => event.stopPropagation());
-      markers.current.push(
-        new gl.Marker({ element })
-          .setLngLat([longitude, latitude])
-          .setPopup(new gl.Popup({ offset: 20 }).setText('Arrangementets sted'))
-          .addTo(instance),
-      );
+      setLocationMarker({ longitude, latitude });
       bounds.extend([longitude, latitude]);
     }
     if (
@@ -520,6 +547,8 @@ export function TravelMap({
     // Typing or choosing an address must supersede any pending map-click lookup.
     // The shared autocomplete owns its debounced search and clears stale coordinates.
     cancelReverse();
+    if (next.coordinates && isCoordinates(next.coordinates))
+      setLocationMarker(next.coordinates);
     onLocationChange?.(next);
   };
 
