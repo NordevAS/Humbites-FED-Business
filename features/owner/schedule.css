@@ -92,6 +92,49 @@
   margin-bottom: 20px;
   min-width: 0;
 }
+.schedule-card.schedule-disclosure {
+  padding: 0;
+}
+.schedule-disclosure > summary,
+.schedule-day > summary,
+.schedule-exception > summary,
+.schedule-vacation > summary {
+  list-style: none;
+  cursor: pointer;
+}
+.schedule-disclosure > summary::-webkit-details-marker,
+.schedule-day > summary::-webkit-details-marker,
+.schedule-exception > summary::-webkit-details-marker,
+.schedule-vacation > summary::-webkit-details-marker {
+  display: none;
+}
+.schedule-disclosure-heading {
+  align-items: center;
+  margin: 0;
+  padding: 24px;
+}
+.schedule-disclosure-heading > div {
+  flex: 1;
+}
+.schedule-disclosure-heading > svg,
+.schedule-day-heading > svg,
+.schedule-exception-summary > svg,
+.schedule-vacation-summary > svg {
+  flex: 0 0 auto;
+  transition: transform 160ms ease;
+}
+.schedule-disclosure[open] > .schedule-disclosure-heading > svg,
+.schedule-day[open] > .schedule-day-heading > svg,
+.schedule-exception[open] > .schedule-exception-summary > svg,
+.schedule-vacation[open] > .schedule-vacation-summary > svg {
+  transform: rotate(180deg);
+}
+.schedule-disclosure[open] > .schedule-disclosure-heading {
+  border-bottom: 1px solid #d4bda6;
+}
+.schedule-disclosure-content {
+  padding: 22px 24px 24px;
+}
 .schedule-section-heading {
   display: flex;
   align-items: flex-start;
@@ -188,22 +231,29 @@
 }
 .schedule-day {
   border-bottom: 1px solid #d4bda6;
-  padding: 18px 0;
+  padding: 0;
 }
 .schedule-day-heading {
   display: flex;
-  justify-content: space-between;
-  gap: 15px;
+  gap: 12px;
   align-items: center;
-  margin-bottom: 12px;
+  padding: 16px 0;
 }
 .schedule-day-heading strong {
   font-size: 15px;
 }
-.schedule-day-heading select {
-  width: 142px;
-  min-height: 38px;
-  font-size: 13px;
+.schedule-day-status {
+  margin-left: auto;
+  color: #675343;
+  font-size: 12px;
+  text-align: right;
+}
+.schedule-day-content {
+  padding: 0 0 18px;
+}
+.schedule-day-mode {
+  max-width: 240px;
+  margin-bottom: 13px;
 }
 .schedule-day.is-closed .schedule-day-heading strong {
   color: #786556;
@@ -456,6 +506,29 @@
   padding: 17px;
   background: #fffaf2;
 }
+.schedule-exception-summary,
+.schedule-vacation-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+}
+.schedule-exception-summary strong,
+.schedule-vacation-summary strong {
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+.schedule-exception-summary span,
+.schedule-vacation-summary span {
+  color: #675343;
+  font-size: 12px;
+  text-align: right;
+}
+.schedule-exception-content {
+  padding-top: 16px;
+}
 .schedule-exception-heading {
   display: grid;
   grid-template-columns: minmax(140px, 0.8fr) minmax(160px, 1.3fr) 125px 40px;
@@ -544,12 +617,16 @@
   margin-top: 20px;
 }
 .schedule-vacation {
+  display: block;
+  border-top: 1px solid #d4bda6;
+  padding: 17px 0;
+}
+.schedule-vacation-content {
   display: grid;
   grid-template-columns: 1fr 1fr 1.3fr 40px;
   gap: 13px;
   align-items: end;
-  border-top: 1px solid #d4bda6;
-  padding: 17px 0;
+  padding-top: 16px;
 }
 .schedule-booking-window {
   display: grid;
@@ -631,10 +708,10 @@
   .schedule-range {
     max-width: 500px;
   }
-  .schedule-vacation {
+  .schedule-vacation-content {
     grid-template-columns: 1fr 1fr;
   }
-  .schedule-vacation .schedule-remove {
+  .schedule-vacation-content .schedule-remove {
     justify-self: end;
   }
 }
@@ -688,15 +765,21 @@
   .schedule-holiday-list {
     grid-template-columns: 1fr;
   }
-  .schedule-vacation {
+  .schedule-vacation-content {
     grid-template-columns: minmax(0, 1fr) 42px;
   }
-  .schedule-vacation > label {
+  .schedule-vacation-content > label {
     grid-column: 1;
   }
-  .schedule-vacation > .schedule-remove {
+  .schedule-vacation-content > .schedule-remove {
     grid-column: 2;
     grid-row: 1;
+  }
+  .schedule-disclosure-heading {
+    padding: 19px 16px;
+  }
+  .schedule-disclosure-content {
+    padding: 18px 16px 19px;
   }
   .schedule-booking-window {
     grid-template-columns: 1fr;

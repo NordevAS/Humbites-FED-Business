@@ -278,15 +278,15 @@ export function OpeningHoursEditor({
         ],
       }));
     }
-    setTimeout(
-      () =>
-        document
-          .querySelector<HTMLElement>(
-            `#schedule-exception-${existing < 0 ? draft.dateOverrides.length : existing} input`,
-          )
-          ?.focus(),
-      0,
-    );
+    setTimeout(() => {
+      const section = document.getElementById(
+        `schedule-exception-${existing < 0 ? draft.dateOverrides.length : existing}`,
+      );
+      const group = document.getElementById('schedule-exceptions');
+      if (group instanceof HTMLDetailsElement) group.open = true;
+      if (section instanceof HTMLDetailsElement) section.open = true;
+      section?.querySelector<HTMLInputElement>('input')?.focus();
+    }, 0);
   }
   function updateDate(index: number, patch: Partial<DateOverride>) {
     change((state) => ({
@@ -549,14 +549,16 @@ export function OpeningHoursEditor({
         </p>
       )}
       <div className="schedule-layout">
-        <section className="schedule-card schedule-week">
-          <div className="schedule-section-heading">
+        <details className="schedule-card schedule-disclosure schedule-week">
+          <summary className="schedule-section-heading schedule-disclosure-heading">
             <span className="schedule-number">01</span>
             <div>
               <h3>Den vanlige uken</h3>
               <p>Flere serveringer samme dag? Legg til flere tidsrom.</p>
             </div>
-          </div>
+            <Icon name="chevron" size={20} />
+          </summary>
+          <div className="schedule-disclosure-content">
           <div className="schedule-preset">
             <label>
               <span>Start med et forslag</span>
@@ -595,25 +597,37 @@ export function OpeningHoursEditor({
                   ),
                 }));
               return (
-                <div
+                <details
                   className={`schedule-day ${mode === 'closed' ? 'is-closed' : ''}`}
                   key={day.id}
                 >
-                  <div className="schedule-day-heading">
+                  <summary className="schedule-day-heading">
                     <strong>{day.name}</strong>
-                    <select
-                      aria-label={`Åpningsstatus ${day.name.toLowerCase()}`}
-                      disabled={busy}
-                      value={mode}
-                      onChange={(e) =>
-                        void changeDayMode(day.id, e.target.value)
-                      }
-                    >
-                      <option value="closed">Stengt</option>
-                      <option value="open">Egne tider</option>
-                      <option value="all-day">Døgnåpent</option>
-                    </select>
-                  </div>
+                    <span className="schedule-day-status">
+                      {mode === 'closed'
+                        ? 'Stengt'
+                        : mode === 'all-day'
+                          ? 'Døgnåpent'
+                          : rows.map(intervalLabel).join(' · ')}
+                    </span>
+                    <Icon name="chevron" size={18} />
+                  </summary>
+                  <div className="schedule-day-content">
+                    <label className="schedule-day-mode">
+                      <span>Åpningsstatus</span>
+                      <select
+                        aria-label={`Åpningsstatus ${day.name.toLowerCase()}`}
+                        disabled={busy}
+                        value={mode}
+                        onChange={(e) =>
+                          void changeDayMode(day.id, e.target.value)
+                        }
+                      >
+                        <option value="closed">Stengt</option>
+                        <option value="open">Egne tider</option>
+                        <option value="all-day">Døgnåpent</option>
+                      </select>
+                    </label>
                   {mode === 'open' ? (
                     <TimeRanges
                       value={rows}
@@ -629,7 +643,8 @@ export function OpeningHoursEditor({
                         : 'Ingen servering starter denne dagen'}
                     </p>
                   )}
-                </div>
+                  </div>
+                </details>
               );
             })}
           </div>
@@ -678,9 +693,10 @@ export function OpeningHoursEditor({
               Kopier tider
             </button>
           </div>
-        </section>
-        <aside className="schedule-preview schedule-card">
-          <div className="schedule-section-heading">
+          </div>
+        </details>
+        <details className="schedule-preview schedule-card schedule-disclosure">
+          <summary className="schedule-section-heading schedule-disclosure-heading">
             <span className="schedule-number">↗</span>
             <div>
               <h3>Se kalenderen</h3>
@@ -689,7 +705,9 @@ export function OpeningHoursEditor({
                 Europe/Oslo
               </p>
             </div>
-          </div>
+            <Icon name="chevron" size={20} />
+          </summary>
+          <div className="schedule-disclosure-content">
           <div className="schedule-month-nav">
             <button
               type="button"
@@ -888,10 +906,11 @@ export function OpeningHoursEditor({
             servering reserverer tid, men trenger ikke ligge innenfor
             serveringstidene.
           </p>
-        </aside>
+          </div>
+        </details>
       </div>
-      <section className="schedule-card">
-        <div className="schedule-section-heading">
+      <details id="schedule-exceptions" className="schedule-card schedule-disclosure">
+        <summary className="schedule-section-heading schedule-disclosure-heading">
           <span className="schedule-number">02</span>
           <div>
             <h3>Noen dager er annerledes</h3>
@@ -900,7 +919,9 @@ export function OpeningHoursEditor({
               festival, privat selskap eller helligdag.
             </p>
           </div>
-        </div>
+          <Icon name="chevron" size={20} />
+        </summary>
+        <div className="schedule-disclosure-content">
         <div className="schedule-add-date">
           <label>
             <span>Velg en dato</span>
@@ -928,11 +949,30 @@ export function OpeningHoursEditor({
         )}
         <div className="schedule-exceptions">
           {draft.dateOverrides.map((row, index) => (
-            <article
+            <details
               className="schedule-exception"
               id={`schedule-exception-${index}`}
               key={index}
             >
+              <summary className="schedule-exception-summary">
+                <strong>
+                  {displayDate(row.date, {
+                    weekday: 'short',
+                    day: 'numeric',
+                    month: 'short',
+                  })}
+                  {row.label ? ` · ${row.label}` : ''}
+                </strong>
+                <span>
+                  {row.closed
+                    ? 'Stengt'
+                    : dayMode(row.intervals) === 'all-day'
+                      ? 'Døgnåpent'
+                      : row.intervals.map(intervalLabel).join(' · ')}
+                </span>
+                <Icon name="chevron" size={18} />
+              </summary>
+              <div className="schedule-exception-content">
               <div className="schedule-exception-heading">
                 <label>
                   <span>Dato</span>
@@ -1005,7 +1045,8 @@ export function OpeningHoursEditor({
                   }
                 />
               )}
-            </article>
+              </div>
+            </details>
           ))}
         </div>
         {draft.closedDates.length > 0 && (
@@ -1115,9 +1156,10 @@ export function OpeningHoursEditor({
             </button>
           </div>
         </details>
-      </section>
-      <section className="schedule-card">
-        <div className="schedule-section-heading">
+        </div>
+      </details>
+      <details className="schedule-card schedule-disclosure">
+        <summary className="schedule-section-heading schedule-disclosure-heading">
           <span className="schedule-number">03</span>
           <div>
             <h3>Plass til en pause</h3>
@@ -1126,14 +1168,26 @@ export function OpeningHoursEditor({
               inkludert, og perioden overstyrer alle åpningstider.
             </p>
           </div>
-        </div>
+          <Icon name="chevron" size={20} />
+        </summary>
+        <div className="schedule-disclosure-content">
         {!draft.vacationRanges.length && (
           <p className="schedule-empty">
             Ingen stengte perioder. Legg til en når du trenger en pause.
           </p>
         )}
         {draft.vacationRanges.map((row, index) => (
-          <div className="schedule-vacation" key={index}>
+          <details
+            className="schedule-vacation"
+            id={`schedule-vacation-${index}`}
+            key={index}
+          >
+            <summary className="schedule-vacation-summary">
+              <strong>{row.label || `${row.from} – ${row.to}`}</strong>
+              <span>{row.label ? `${row.from} – ${row.to}` : 'Stengt'}</span>
+              <Icon name="chevron" size={18} />
+            </summary>
+            <div className="schedule-vacation-content">
             <label>
               <span>Fra og med</span>
               <input
@@ -1208,13 +1262,15 @@ export function OpeningHoursEditor({
             >
               <Icon name="close" size={18} />
             </button>
-          </div>
+            </div>
+          </details>
         ))}
         <button
           type="button"
           className="schedule-add"
           disabled={busy || draft.vacationRanges.length >= 100}
-          onClick={() =>
+          onClick={() => {
+            const index = draft.vacationRanges.length;
             change((state) => ({
               ...state,
               vacationRanges: [
@@ -1225,14 +1281,22 @@ export function OpeningHoursEditor({
                   label: '',
                 },
               ],
-            }))
-          }
+            }));
+            setTimeout(() => {
+              const section = document.getElementById(
+                `schedule-vacation-${index}`,
+              );
+              if (section instanceof HTMLDetailsElement) section.open = true;
+              section?.querySelector<HTMLInputElement>('input')?.focus();
+            }, 0);
+          }}
         >
           + Legg til stengt periode
         </button>
-      </section>
-      <section className="schedule-card">
-        <div className="schedule-section-heading">
+        </div>
+      </details>
+      <details className="schedule-card schedule-disclosure">
+        <summary className="schedule-section-heading schedule-disclosure-heading">
           <span className="schedule-number">04</span>
           <div>
             <h3>Litt tid til å planlegge</h3>
@@ -1242,7 +1306,9 @@ export function OpeningHoursEditor({
               forespørselen.
             </p>
           </div>
-        </div>
+          <Icon name="chevron" size={20} />
+        </summary>
+        <div className="schedule-disclosure-content">
         <div className="schedule-booking-window">
           <label>
             <span>Minste varsel (timer)</span>
@@ -1300,7 +1366,8 @@ export function OpeningHoursEditor({
               : 'Ingen siste startdato satt.'}
           </p>
         )}
-      </section>
+        </div>
+      </details>
       <div className={`schedule-savebar ${dirty ? 'is-dirty' : ''}`}>
         <div>
           <strong>{dirty ? 'Ulagrede endringer' : 'Planen er lagret'}</strong>
