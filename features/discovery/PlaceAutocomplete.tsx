@@ -11,6 +11,7 @@ import type { EventLocation } from '@/domain';
 import { Icon } from '@/components/Icon';
 import { suggestPlaces } from './places';
 import { useAddressSuggestions } from './useAddressSuggestions';
+import type { OsmAddressSuggestion } from '@/lib/places/osm-search';
 import styles from './PlaceAutocomplete.module.css';
 
 export function PlaceAutocomplete({
@@ -20,6 +21,10 @@ export function PlaceAutocomplete({
   label = 'HVOR?',
   required = false,
   inputProps = {},
+  showPresets = true,
+  searchProvider = 'kartverket',
+  onUseMyLocation,
+  locating = false,
 }: {
   location: EventLocation;
   onChange: (location: EventLocation) => void;
@@ -31,6 +36,10 @@ export function PlaceAutocomplete({
     InputHTMLAttributes<HTMLInputElement>,
     'id' | 'aria-invalid' | 'aria-describedby'
   >;
+  showPresets?: boolean;
+  searchProvider?: 'kartverket' | 'osm';
+  onUseMyLocation?: () => void;
+  locating?: boolean;
 }) {
   const generatedId = useId();
   const id = inputProps.id ?? generatedId;
@@ -40,9 +49,10 @@ export function PlaceAutocomplete({
   const addressSearch = useAddressSuggestions(
     location.label,
     open && !location.coordinates,
+    searchProvider,
   );
   const suggestions = [
-    ...suggestPlaces(location.label).map((place) => ({
+    ...(showPresets ? suggestPlaces(location.label) : []).map((place) => ({
       id: place.city,
       label: place.label,
       title: place.city,
@@ -53,7 +63,10 @@ export function PlaceAutocomplete({
     ...addressSearch.suggestions.map((place) => ({
       ...place,
       title: place.label,
-      detail: 'Adresse · Kartverket',
+      detail:
+        searchProvider === 'osm'
+          ? 'Adresse · OpenStreetMap'
+          : 'Adresse · Kartverket',
       source: 'manual' as const,
     })),
   ];
@@ -68,6 +81,10 @@ export function PlaceAutocomplete({
       label: place.label,
       coordinates: { ...place.coordinates },
       source: place.source,
+      addressDetails:
+        'addressDetails' in place
+          ? (place as OsmAddressSuggestion).addressDetails
+          : undefined,
     });
     setOpen(false);
     setActive(-1);
@@ -104,57 +121,96 @@ export function PlaceAutocomplete({
         if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
       }}
     >
-      <label
-        className={
-          variant === 'field' ? 'field' : 'search-field location-field'
-        }
-        htmlFor={id}
-      >
-        {variant === 'search' && <Icon name="pin" />}
-        <span>
-          <span className={variant === 'search' ? 'field-caption' : undefined}>
-            {label}
-            {required && <b> *</b>}
+      <div className={styles.searchControl}>
+        <label
+          className={
+            variant === 'field' ? 'field' : 'search-field location-field'
+          }
+          htmlFor={id}
+        >
+          {variant === 'search' && <Icon name="pin" />}
+          <span>
+            <span
+              className={variant === 'search' ? 'field-caption' : undefined}
+            >
+              {label}
+              {required && <b> *</b>}
+            </span>
+            <input
+              {...inputProps}
+              id={id}
+              name="place"
+              autoComplete="off"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded={open}
+              aria-controls={`${id}-suggestions`}
+              aria-activedescendant={
+                open && active >= 0 && active < suggestions.length
+                  ? `${id}-option-${active}`
+                  : undefined
+              }
+              aria-describedby={[inputProps['aria-describedby'], `${id}-hint`]
+                .filter(Boolean)
+                .join(' ')}
+              aria-label={variant === 'search' ? 'Sted eller by' : undefined}
+              placeholder={
+                searchProvider === 'osm'
+                  ? 'Søk etter adresse eller sted i hele verden'
+                  : 'Søk etter adresse eller by i Norge'
+              }
+              maxLength={180}
+              value={location.label}
+              onFocus={() => setOpen(true)}
+              onKeyDown={navigate}
+              onChange={(event) => {
+                onChange({ label: event.target.value, source: 'manual' });
+                setOpen(true);
+                setActive(-1);
+              }}
+            />
           </span>
-          <input
-            {...inputProps}
-            id={id}
-            name="place"
-            autoComplete="off"
-            role="combobox"
-            aria-autocomplete="list"
-            aria-expanded={open}
-            aria-controls={`${id}-suggestions`}
-            aria-activedescendant={
-              open && active >= 0 && active < suggestions.length
-                ? `${id}-option-${active}`
-                : undefined
-            }
-            aria-describedby={[inputProps['aria-describedby'], `${id}-hint`]
-              .filter(Boolean)
-              .join(' ')}
-            aria-label={variant === 'search' ? 'Sted eller by' : undefined}
-            placeholder="Søk etter adresse eller by i Norge"
-            maxLength={180}
-            value={location.label}
-            onFocus={() => setOpen(true)}
-            onKeyDown={navigate}
-            onChange={(event) => {
-              onChange({ label: event.target.value, source: 'manual' });
-              setOpen(true);
+        </label>
+        {onUseMyLocation && (
+          <button
+            type="button"
+            className={styles.locationButton}
+            onClick={() => {
+              setOpen(false);
               setActive(-1);
+              onUseMyLocation();
             }}
-          />
-        </span>
-      </label>
+            disabled={locating}
+            aria-label={
+              locating ? 'Posisjonsoppslag pågår' : 'Bruk min posisjon'
+            }
+            title={locating ? 'Posisjonsoppslag pågår' : 'Bruk min posisjon'}
+          >
+            <svg
+              viewBox="0 0 32 32"
+              aria-hidden="true"
+              className={locating ? styles.locationButtonBusy : undefined}
+            >
+              <circle cx="16" cy="16" r="8.5" />
+              <circle cx="16" cy="16" r="3" />
+              <path d="M16 2v6m0 16v6M2 16h6m16 0h6" />
+              <path d="m9.5 9.5 2.1 2.1m8.8 8.8 2.1 2.1m0-13-2.1 2.1m-8.8 8.8-2.1 2.1" />
+            </svg>
+          </button>
+        )}
+      </div>
       <span id={`${id}-hint`} className="sr-only">
-        Skriv minst tre tegn for adressesøk i Norge. Velg et forslag med
-        piltastene og Enter. Eksempelsteder er merket, og du kan også velge
-        kartpunkt.
+        {searchProvider === 'osm'
+          ? 'Skriv minst tre tegn for adressesøk basert på OpenStreetMap. Velg et forslag med piltastene og Enter, eller velg et kartpunkt.'
+          : 'Skriv minst tre tegn for adressesøk i Norge. Velg et forslag med piltastene og Enter. Eksempelsteder er merket, og du kan også velge kartpunkt.'}
       </span>
       {open && (
         <div className={styles.popup}>
-          <p className={styles.hint}>Velg adresse eller eksempelsted</p>
+          <p className={styles.hint}>
+            {searchProvider === 'osm'
+              ? 'Velg adresse eller sted fra OpenStreetMap'
+              : 'Velg adresse eller eksempelsted'}
+          </p>
           <ul
             ref={options}
             id={`${id}-suggestions`}
@@ -177,7 +233,9 @@ export function PlaceAutocomplete({
           </ul>
           {addressSearch.loading && (
             <p className={styles.hint} role="status">
-              Søker etter adresser i Norge …
+              {searchProvider === 'osm'
+                ? 'Søker i OpenStreetMap …'
+                : 'Søker etter adresser i Norge …'}
             </p>
           )}
           {addressSearch.error && (
@@ -196,20 +254,28 @@ export function PlaceAutocomplete({
             )}
         </div>
       )}
-      <span className={styles.attribution}>
-        Adressedata:{' '}
-        <a href="https://www.kartverket.no/" target="_blank" rel="noreferrer">
-          © Kartverket
-        </a>{' '}
-        ·{' '}
-        <a
-          href="https://creativecommons.org/licenses/by/4.0/"
-          target="_blank"
-          rel="noreferrer"
-        >
-          CC BY 4.0
-        </a>
-      </span>
+      {searchProvider !== 'osm' && (
+        <span className={styles.attribution}>
+          Adressedata:{' '}
+          <>
+            <a
+              href="https://www.kartverket.no/"
+              target="_blank"
+              rel="noreferrer"
+            >
+              © Kartverket
+            </a>{' '}
+            ·{' '}
+            <a
+              href="https://creativecommons.org/licenses/by/4.0/"
+              target="_blank"
+              rel="noreferrer"
+            >
+              CC BY 4.0
+            </a>
+          </>
+        </span>
+      )}
     </div>
   );
 }

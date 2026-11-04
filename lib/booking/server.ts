@@ -115,7 +115,57 @@ function normalizeTruck(value: unknown): FoodTruck {
       'INVALID_RESPONSE',
       'Utvalget kunne ikke leses.',
     );
-  const truck = value as FoodTruck;
+  const raw = value as Record<string, unknown>;
+  const text = (key: string, fallback = '') =>
+    typeof raw[key] === 'string' ? (raw[key] as string) : fallback;
+  const id =
+    typeof raw.id === 'string' || typeof raw.id === 'number'
+      ? String(raw.id)
+      : '';
+  const city = text('city');
+  const region = text('region', text('state', city));
+  const description = text('description');
+  const coordinates = isCoordinates(raw.coordinates)
+    ? raw.coordinates
+    : isCoordinates({ latitude: raw.latitude, longitude: raw.longitude })
+      ? { latitude: raw.latitude as number, longitude: raw.longitude as number }
+      : null;
+  const menu = Array.isArray(raw.menu) ? raw.menu : [];
+  const fee = raw.fixedFeeMinor;
+  const booking =
+    raw.booking && typeof raw.booking === 'object'
+      ? (raw.booking as FoodTruck['booking'])
+      : {
+          configured: false,
+          enabled: false,
+          maxGuests: null,
+          maxPortions: null,
+          serviceRadiusKm: null,
+        };
+  const truck: FoodTruck = {
+    id,
+    slug: text('slug'),
+    name: text('name'),
+    cuisine: text('cuisine', text('category', 'Foodtruck')),
+    city,
+    region,
+    description,
+    shortDescription: text('shortDescription', description),
+    image: text('image', text('imageUrl', '/humbites-mark.png')),
+    imageAlt: text('imageAlt', text('name')),
+    menu: menu as FoodTruck['menu'],
+    fixedFeeMinor:
+      fee === null || (Number.isSafeInteger(fee) && (fee as number) >= 0)
+        ? (fee as number | null)
+        : null,
+    coordinates: coordinates as FoodTruck['coordinates'],
+    tags: Array.isArray(raw.tags) ? (raw.tags as string[]) : [],
+    serviceAreaLabel: text('serviceAreaLabel', text('address', city)),
+    practicalInfo: Array.isArray(raw.practicalInfo)
+      ? (raw.practicalInfo as string[])
+      : [],
+    booking,
+  };
   const strings = [
     'id',
     'slug',
@@ -129,6 +179,7 @@ function normalizeTruck(value: unknown): FoodTruck {
   ] as const;
   const lists = ['tags', 'practicalInfo'] as const;
   if (
+    !truck.id ||
     strings.some((key) => typeof truck[key] !== 'string') ||
     lists.some(
       (key) =>

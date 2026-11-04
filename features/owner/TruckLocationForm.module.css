@@ -1,0 +1,35 @@
+.fieldsLoading :global(.field input) {
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  caret-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    var(--surface-warm, #f6e9d7) 20%,
+    color-mix(in srgb, var(--surface-warm, #f6e9d7) 45%, white) 42%,
+    var(--surface-warm, #f6e9d7) 64%
+  );
+  background-size: 220% 100%;
+  animation: skeleton-shimmer 1.25s ease-in-out infinite;
+}
+
+.fieldsLoading :global(.field input::selection) {
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  background: transparent;
+}
+
+@keyframes skeleton-shimmer {
+  to {
+    background-position-x: -220%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fieldsLoading :global(.field input) {
+    animation: none;
+    color: transparent;
+  }
+}

@@ -23,6 +23,10 @@ export interface TravelMapProps {
   location?: EventLocation;
   onLocationChange?: (location: EventLocation) => void;
   compact?: boolean;
+  showLocationSearch?: boolean;
+  reverseProvider?: 'kartverket' | 'osm';
+  searchProvider?: 'kartverket' | 'osm';
+  onLocationLookupPending?: (pending: boolean) => void;
 }
 
 const clientFailure = (): MapboxFailure => ({
@@ -30,6 +34,32 @@ const clientFailure = (): MapboxFailure => ({
   code: 'upstream',
   message: 'Kartinformasjonen kunne ikke hentes. Prøv igjen om litt.',
 });
+const openStreetMapStyle = {
+  version: 8 as const,
+  sources: {
+    'open-street-map': {
+      type: 'raster' as const,
+      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+      tileSize: 256,
+      attribution:
+        '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    },
+  },
+  layers: [
+    {
+      id: 'open-street-map',
+      type: 'raster' as const,
+      source: 'open-street-map',
+    },
+  ],
+};
+function createTruckLocationPin() {
+  const element = document.createElement('div');
+  element.className = styles.truckLocationPin;
+  element.setAttribute('aria-label', 'Truckens valgte posisjon');
+  element.innerHTML = `<svg viewBox="0 0 48 60" aria-hidden="true" focusable="false"><path class="${styles.pinShape}" d="M24 1C11.3 1 1 11.3 1 24c0 16 23 34 23 34s23-18 23-34C47 11.3 36.7 1 24 1Z"/><g transform="translate(12 10) scale(1)" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h12v13H3zM15 10h4l3 4v4h-7M6 8h6v4H6"/><circle cx="7" cy="19" r="2"/><circle cx="18" cy="19" r="2"/></g></svg>`;
+  return element;
+}
 async function post<T>(
   operation: string,
   data: unknown,
@@ -69,17 +99,29 @@ export function TravelMap({
   location,
   onLocationChange,
   compact = false,
+  showLocationSearch = true,
+  reverseProvider = 'kartverket',
+  searchProvider = 'kartverket',
+  onLocationLookupPending,
 }: TravelMapProps) {
   const { showcase } = useDemo();
   const fieldId = useId();
-  const [mapSelection] = useState(createMapSelection);
+  const [mapSelection] = useState(() =>
+    createMapSelection(
+      fetch,
+      reverseProvider === 'osm'
+        ? '/api/places/osm-reverse'
+        : '/api/places/reverse',
+    ),
+  );
   const [reverseMessage, setReverseMessage] = useState('');
+  const [locating, setLocating] = useState(false);
+  const [lookupPending, setLookupPending] = useState(false);
   const pendingPoint = useRef<EventLocation['coordinates']>(undefined);
-  const cancelReverse = () => {
-    mapSelection.cancel();
-    pendingPoint.current = undefined;
-    setReverseMessage('');
-  };
+  const previewMarker = useRef<mapboxgl.Marker | null>(null);
+  const selectedLocationMarker = useRef<mapboxgl.Marker | null>(null);
+  const locationAction = useRef(0);
+  const locationLabel = useRef(location?.label);
   const catalogue = useMemo(
     () => (truck ? [truck] : (trucks ?? [])),
     [truck, trucks],
@@ -92,14 +134,173 @@ export function TravelMap({
   const [mapState, setMapState] = useState<
     'loading' | 'ready' | 'unconfigured' | 'error'
   >('loading');
+  const mapStateRef = useRef(mapState);
+  mapStateRef.current = mapState;
+  const [mapProvider, setMapProvider] = useState<'mapbox' | 'openstreetmap'>(
+    'mapbox',
+  );
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const library = useRef<typeof mapboxgl | null>(null);
   const markers = useRef<mapboxgl.Marker[]>([]);
   const onLocationRef = useRef(onLocationChange);
+  const onLocationLookupPendingRef = useRef(onLocationLookupPending);
+  const locationRef = useRef(location);
+  locationRef.current = location;
   const longitude = location?.coordinates?.longitude;
   const latitude = location?.coordinates?.latitude;
-  useEffect(() => () => mapSelection.cancel(), [mapSelection]);
+  const clearPreviewMarker = () => {
+    previewMarker.current?.remove();
+    previewMarker.current = null;
+  };
+  const setLocationMarker = (point: {
+    longitude: number;
+    latitude: number;
+  }) => {
+    const instance = map.current;
+    const gl = library.current;
+    if (!instance || !gl || mapStateRef.current !== 'ready') return;
+    const selected = selectedLocationMarker.current?.getLngLat();
+    if (
+      selected &&
+      selected.lng === point.longitude &&
+      selected.lat === point.latitude
+    )
+      return;
+    clearPreviewMarker();
+    selectedLocationMarker.current?.remove();
+    const element =
+      reverseProvider === 'osm'
+        ? createTruckLocationPin()
+        : document.createElement('div');
+    if (reverseProvider !== 'osm') {
+      element.className = styles.eventMarker;
+      element.textContent = '●';
+      element.setAttribute('aria-label', 'Stedets posisjon');
+    }
+    selectedLocationMarker.current = new gl.Marker({
+      element,
+      anchor: 'bottom',
+    })
+      .setLngLat([point.longitude, point.latitude])
+      .addTo(instance);
+    instance.easeTo({
+      center: [point.longitude, point.latitude],
+      zoom: 17,
+      duration: 700,
+    });
+  };
+  const finishPendingLookup = (pending: boolean, resolved = false) => {
+    setLookupPending(pending);
+    onLocationLookupPendingRef.current?.(pending);
+    if (!pending) {
+      pendingPoint.current = undefined;
+      if (resolved && previewMarker.current) {
+        selectedLocationMarker.current?.remove();
+        selectedLocationMarker.current = previewMarker.current;
+        previewMarker.current = null;
+      } else {
+        clearPreviewMarker();
+        const saved = locationRef.current?.coordinates;
+        if (saved && isCoordinates(saved)) setLocationMarker(saved);
+      }
+    }
+  };
+  const cancelReverse = () => {
+    locationAction.current++;
+    mapSelection.cancel();
+    pendingPoint.current = undefined;
+    setLocating(false);
+    finishPendingLookup(false);
+    setReverseMessage('');
+  };
+  const previewPoint = (point: { longitude: number; latitude: number }) => {
+    const instance = map.current;
+    const gl = library.current;
+    if (!instance || !gl || mapStateRef.current !== 'ready') return;
+    clearPreviewMarker();
+    selectedLocationMarker.current?.remove();
+    const element =
+      reverseProvider === 'osm'
+        ? createTruckLocationPin()
+        : document.createElement('div');
+    if (reverseProvider !== 'osm') {
+      element.className = styles.eventMarker;
+      element.textContent = '●';
+      element.setAttribute('aria-label', 'Ny posisjon som kontrolleres');
+    }
+    previewMarker.current = new gl.Marker({ element, anchor: 'bottom' })
+      .setLngLat([point.longitude, point.latitude])
+      .addTo(instance);
+    instance.easeTo({
+      center: [point.longitude, point.latitude],
+      zoom: 17,
+      duration: 700,
+    });
+  };
+  const startPointLookup = (point: { longitude: number; latitude: number }) => {
+    locationAction.current++;
+    setLocating(false);
+    pendingPoint.current = point;
+    previewPoint(point);
+    const resolved = { current: false };
+    void mapSelection.select(
+      point,
+      (next) => {
+        resolved.current = true;
+        onLocationRef.current?.(next);
+      },
+      setReverseMessage,
+      (pending) => finishPendingLookup(pending, resolved.current),
+    );
+  };
+  const useMyPosition = () => {
+    if (!navigator.geolocation) {
+      setReverseMessage('Denne nettleseren støtter ikke posisjonsdeling.');
+      return;
+    }
+    cancelReverse();
+    const action = ++locationAction.current;
+    setLocating(true);
+    onLocationLookupPendingRef.current?.(true);
+    setReverseMessage('Finner posisjonen din …');
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        if (action !== locationAction.current) return;
+        setLocating(false);
+        startPointLookup({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+      },
+      (error) => {
+        if (action !== locationAction.current) return;
+        setLocating(false);
+        onLocationLookupPendingRef.current?.(false);
+        setReverseMessage(
+          error.code === error.PERMISSION_DENIED
+            ? 'Posisjonstilgang ble ikke gitt. Du kan søke etter adressen eller velge punkt på kartet.'
+            : 'Posisjonen kunne ikke hentes. Prøv igjen eller velg punkt på kartet.',
+        );
+      },
+      { enableHighAccuracy: true, maximumAge: 30_000, timeout: 12_000 },
+    );
+  };
+  useEffect(
+    () => () => {
+      mapSelection.cancel();
+      clearPreviewMarker();
+    },
+    [mapSelection],
+  );
+  useEffect(() => {
+    if (locationLabel.current !== location?.label && locating) {
+      locationAction.current++;
+      setLocating(false);
+      onLocationLookupPendingRef.current?.(false);
+    }
+    locationLabel.current = location?.label;
+  }, [location?.label, locating]);
   useEffect(() => {
     const pending = pendingPoint.current;
     if (
@@ -108,6 +309,7 @@ export function TravelMap({
     ) {
       mapSelection.cancel();
       pendingPoint.current = undefined;
+      finishPendingLookup(false);
       setReverseMessage('');
     }
   }, [longitude, latitude, mapSelection]);
@@ -139,14 +341,15 @@ export function TravelMap({
   }, [onLocationChange]);
 
   useEffect(() => {
+    onLocationLookupPendingRef.current = onLocationLookupPending;
+  }, [onLocationLookupPending]);
+
+  useEffect(() => {
     if (publicToken === null) return;
-    if (!publicToken.startsWith('pk.')) {
-      setMapState('unconfigured');
-      return;
-    }
     if (!container.current) return;
     let disposed = false;
     let instance: mapboxgl.Map | null = null;
+    let fellBackToOpenStreetMap = !publicToken.startsWith('pk.');
     const target = container.current;
     let observer: ResizeObserver | undefined;
     import('mapbox-gl')
@@ -156,8 +359,10 @@ export function TravelMap({
         library.current = gl;
         instance = new gl.Map({
           container: target,
-          accessToken: publicToken,
-          style: 'mapbox://styles/mapbox/standard',
+          accessToken: publicToken.startsWith('pk.') ? publicToken : undefined,
+          style: fellBackToOpenStreetMap
+            ? openStreetMapStyle
+            : 'mapbox://styles/mapbox/standard',
           center: [12, 64.4],
           zoom: 3.5,
           attributionControl: true,
@@ -166,9 +371,10 @@ export function TravelMap({
           cooperativeGestures: false,
         });
         // Wheel/trackpad and pinch zoom are primary gestures; controls remain a keyboard-accessible alternative.
-        instance
-          .getCanvas()
-          .setAttribute('aria-describedby', `${fieldId}-map-help`);
+        if (reverseProvider !== 'osm')
+          instance
+            .getCanvas()
+            .setAttribute('aria-describedby', `${fieldId}-map-help`);
         map.current = instance;
         instance.addControl(
           new gl.NavigationControl({ showCompass: false }),
@@ -177,10 +383,24 @@ export function TravelMap({
         instance.dragRotate.disable();
         instance.touchZoomRotate.disableRotation();
         instance.on('load', () => {
-          if (!disposed) setMapState('ready');
+          if (!disposed) {
+            setMapProvider(
+              fellBackToOpenStreetMap ? 'openstreetmap' : 'mapbox',
+            );
+            setMapState('ready');
+          }
         });
-        instance.on('error', () => {
-          if (!disposed) setMapState('error');
+        instance.on('error', (event) => {
+          if (disposed) return;
+          // A missing or rejected public Mapbox token should not disable the
+          // location picker. Switch to public OSM raster tiles, which need no token.
+          if (!fellBackToOpenStreetMap && !instance?.loaded()) {
+            fellBackToOpenStreetMap = true;
+            setMapProvider('openstreetmap');
+            instance?.setStyle(openStreetMapStyle);
+            return;
+          }
+          if (fellBackToOpenStreetMap && event.error) setMapState('error');
         });
         instance.on('click', (event) => {
           if (!onLocationRef.current) return;
@@ -188,12 +408,7 @@ export function TravelMap({
             longitude: event.lngLat.lng,
             latitude: event.lngLat.lat,
           };
-          pendingPoint.current = point;
-          void mapSelection.select(
-            point,
-            (next) => onLocationRef.current?.(next),
-            setReverseMessage,
-          );
+          startPointLookup(point);
         });
         observer = new ResizeObserver(() => instance?.resize());
         observer.observe(target);
@@ -215,6 +430,8 @@ export function TravelMap({
     const instance = map.current;
     const gl = library.current;
     if (!instance || !gl || mapState !== 'ready') return;
+    if (pendingPoint.current && !previewMarker.current)
+      previewPoint(pendingPoint.current);
     for (const marker of markers.current) marker.remove();
     markers.current = [];
     const bounds = new gl.LngLatBounds();
@@ -240,23 +457,35 @@ export function TravelMap({
       );
       bounds.extend(point);
     }
+    if (pendingPoint.current) {
+      instance.easeTo({
+        center: [pendingPoint.current.longitude, pendingPoint.current.latitude],
+        zoom: 17,
+        duration: 700,
+      });
+      return;
+    }
     if (
       typeof longitude === 'number' &&
       typeof latitude === 'number' &&
       isCoordinates({ longitude, latitude })
     ) {
-      const element = document.createElement('div');
-      element.className = styles.eventMarker;
-      element.textContent = '●';
-      element.setAttribute('aria-label', 'Arrangementets sted');
-      element.addEventListener('click', (event) => event.stopPropagation());
-      markers.current.push(
-        new gl.Marker({ element })
-          .setLngLat([longitude, latitude])
-          .setPopup(new gl.Popup({ offset: 20 }).setText('Arrangementets sted'))
-          .addTo(instance),
-      );
+      setLocationMarker({ longitude, latitude });
       bounds.extend([longitude, latitude]);
+    }
+    if (
+      onLocationChange &&
+      compact &&
+      typeof longitude === 'number' &&
+      typeof latitude === 'number' &&
+      isCoordinates({ longitude, latitude })
+    ) {
+      instance.easeTo({
+        center: [longitude, latitude],
+        zoom: 17,
+        duration: 700,
+      });
+      return;
     }
     if (!bounds.isEmpty())
       instance.fitBounds(bounds, {
@@ -266,7 +495,7 @@ export function TravelMap({
           ? 0
           : 400,
       });
-  }, [catalogue, mapState, longitude, latitude]);
+  }, [catalogue, mapState, longitude, latitude, location?.label]);
 
   useEffect(() => {
     const instance = map.current;
@@ -351,6 +580,8 @@ export function TravelMap({
     // Typing or choosing an address must supersede any pending map-click lookup.
     // The shared autocomplete owns its debounced search and clears stale coordinates.
     cancelReverse();
+    if (next.coordinates && isCoordinates(next.coordinates))
+      setLocationMarker(next.coordinates);
     onLocationChange?.(next);
   };
 
@@ -359,11 +590,16 @@ export function TravelMap({
       className={`${styles.root} ${compact ? styles.compact : ''}`}
       aria-label="Sted og kjøreinformasjon"
     >
-      {onLocationChange && (
+      {onLocationChange && showLocationSearch && (
         <div className={styles.searchArea}>
           <PlaceAutocomplete
             location={location ?? { label: '', source: 'manual' }}
             onChange={changeLocation}
+            searchProvider={searchProvider}
+            onUseMyLocation={
+              reverseProvider === 'osm' ? useMyPosition : undefined
+            }
+            locating={locating || lookupPending}
           />
         </div>
       )}
@@ -405,12 +641,16 @@ export function TravelMap({
             <strong>
               {mapState === 'loading'
                 ? 'Åpner kartet…'
-                : 'Kartvisningen er ikke tilgjengelig'}
+                : mapState === 'unconfigured'
+                  ? 'Kartet mangler konfigurasjon'
+                  : 'Kartet kunne ikke lastes'}
             </strong>
             <span>
               {mapState === 'loading'
-                ? 'Henter kart fra Mapbox.'
-                : 'Du kan fortsatt utforske truckene og planlegge arrangementet.'}
+                ? 'Laster kartdata.'
+                : mapState === 'unconfigured'
+                  ? 'Du kan fortsatt søke etter adressen, men kartvalg krever at karttjenesten konfigureres.'
+                  : 'Kontroller internettforbindelsen og prøv igjen. Du kan fortsatt søke etter en adresse.'}
             </span>
           </div>
         )}
@@ -420,26 +660,37 @@ export function TravelMap({
           {reverseMessage}
         </p>
       )}
-      <p className={styles.caption}>
-        Nærmeste adresse fra{' '}
-        <a href="https://www.kartverket.no/api-og-data/eiendomsdata/brukarrettleiing-adresse-api">
-          Kartverket
-        </a>{' '}
-        · <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
-        Markøren viser alltid punktet du valgte.
-      </p>
-      <p id={`${fieldId}-map-help`} className={styles.caption}>
-        Zoom med musehjul eller styreflate, eller knip med to fingre. Bla
-        utenfor kartet for å rulle videre på siden.
-      </p>
-      <p className={styles.caption}>
-        {showcase
-          ? 'Truckene og basene er eksempler. Kart, kjørerute og reisetid beregnes av Mapbox når tjenesten er tilgjengelig.'
-          : 'Truckenes posisjoner er registrerte baser, ikke sanntidsplasseringer.'}
-        {mapState === 'ready' && onLocationChange
-          ? ' Du kan også velge sted i kartet.'
-          : ''}
-      </p>
+      {reverseProvider !== 'osm' && (
+        <p className={styles.caption}>
+          {mapProvider === 'openstreetmap' ? (
+            <a href="https://www.openstreetmap.org/copyright">
+              © OpenStreetMap-bidragsytere
+            </a>
+          ) : (
+            <a href="https://www.mapbox.com/about/maps/">© Mapbox</a>
+          )}
+          {' · adresse © '}
+          <a href="https://www.kartverket.no/api-og-data/eiendomsdata/brukarrettleiing-adresse-api">
+            Kartverket
+          </a>
+        </p>
+      )}
+      {reverseProvider !== 'osm' && (
+        <>
+          <p id={`${fieldId}-map-help`} className={styles.caption}>
+            Zoom med musehjul eller styreflate, eller knip med to fingre. Bla
+            utenfor kartet for å rulle videre på siden.
+          </p>
+          <p className={styles.caption}>
+            {showcase
+              ? 'Truckene og basene er eksempler. Kart, kjørerute og reisetid beregnes av Mapbox når tjenesten er tilgjengelig.'
+              : 'Truckenes posisjoner er registrerte baser, ikke sanntidsplasseringer.'}
+            {mapState === 'ready' && onLocationChange
+              ? ' Du kan også velge sted i kartet.'
+              : ''}
+          </p>
+        </>
+      )}
 
       <div aria-live="polite" className={styles.travel}>
         {catalogue.length > 24 && (

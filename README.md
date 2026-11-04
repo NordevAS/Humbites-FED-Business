@@ -5,9 +5,14 @@ incoming booking requests, schedules, menus, images, and business settings. The
 root URL opens the dashboard at `/eier`. Customer facing catalogue, profile,
 booking, receipt, and payment pages are not part of this application.
 
-The dashboard currently uses the booking API client in `lib/booking/`. The
-business frontend is intended to connect to Humbites-BED for its business and
-booking data.
+Set `BED_API_URL` to the BED origin without `/v1`. Owner dashboard requests
+always use BED and require the owner's real email and password, even when
+`SHOWCASE_MODE=true` enables the isolated customer-facing preview. Credentials
+stay server-side and the proxy forwards only explicitly allowlisted operations.
+
+BED endpoints needed by the dashboard that are absent or incomplete are listed
+in [BED-INTEGRATION-GAPS.md](./BED-INTEGRATION-GAPS.md). No backend code is
+changed in this repository.
 
 ## Development
 

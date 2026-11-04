@@ -29,7 +29,6 @@ import {
   Coins,
 } from 'lucide-react';
 import { useConfirmation } from '@/components/ConfirmationProvider';
-import { ensureShowcaseSession } from '@/lib/booking/showcase-client';
 import Link from '@/components/AppLink';
 import { useDemo } from '@/components/DemoProvider';
 import { api, post, ApiError, errorMessage } from '@/lib/booking/client';
@@ -44,6 +43,7 @@ import {
 import { formatNok } from '@/domain';
 import { dateLabel } from '@/features/booking/QuoteSummary';
 import { SettingsForm } from './SettingsForm';
+import { TruckLocationForm } from './TruckLocationForm';
 import { OpeningHoursEditor } from './OpeningHoursEditor';
 import { MenuEditor, type OwnerItem } from './MenuEditor';
 import { ImageManager } from './ImageManager';
@@ -55,7 +55,18 @@ import {
 import './owner-dashboard.css';
 import { DateTile, Status, ownerStatus } from './BookingPresentation';
 
-type Option = { id: string | number; name?: string; businessName?: string };
+type Option = {
+  id: string | number;
+  name?: string;
+  businessName?: string;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postalCode?: string | null;
+  country?: string | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+};
 type User = { id: string | number; email: string; firstName?: string };
 type Tab = 'overview' | 'inbox' | 'calendar' | 'menu' | 'images' | 'settings';
 const navigation = [
@@ -89,8 +100,7 @@ const tabTitles: Record<Tab, { title: string; description: string }> = {
   },
   images: {
     title: 'Vis hva du byr på.',
-    description:
-      'Gi kundene en smakebit på trucken. Bildene lagres bare i ditt demoområde.',
+    description: 'Gi kundene en smakebit på trucken med gode bilder.',
   },
   settings: {
     title: 'Din truck. Dine rammer.',
@@ -100,7 +110,7 @@ const tabTitles: Record<Tab, { title: string; description: string }> = {
 export function OwnerDashboard() {
   const confirm = useConfirmation();
   const router = useRouter();
-  const { mode, showcase, reloadCatalogue, catalogue } = useDemo();
+  const { reloadCatalogue, catalogue } = useDemo();
   const [user, setUser] = useState<User | null>(null);
   const [checking, setChecking] = useState(true);
   const [email, setEmail] = useState('');
@@ -128,6 +138,10 @@ export function OwnerDashboard() {
   const [notice, setNotice] = useState('');
   const [dirty, setDirty] = useState(false);
   const [editorBusy, setEditorBusy] = useState(false);
+  const [locationDirty, setLocationDirty] = useState(false);
+  const [locationBusy, setLocationBusy] = useState(false);
+  const hasUnsavedEditorChanges = dirty || locationDirty;
+  const anyEditorBusy = editorBusy || locationBusy;
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
@@ -163,13 +177,8 @@ export function OwnerDashboard() {
     }
   }
   useEffect(() => {
-    if (mode === 'demo') {
-      setChecking(false);
-      return;
-    }
     let alive = true;
-    void (showcase ? ensureShowcaseSession() : Promise.resolve())
-      .then(() => api<{ data: User }>('owner/session'))
+    void api<{ data: User }>('owner/session')
       .then(async (result) => {
         if (alive) {
           setUser(result.data);
@@ -186,7 +195,7 @@ export function OwnerDashboard() {
     return () => {
       alive = false;
     };
-  }, [mode, showcase]);
+  }, []);
   useEffect(() => {
     setTruck('');
     setTrucks([]);
@@ -322,9 +331,9 @@ export function OwnerDashboard() {
   }
   // In-portal navigation must settle unsaved edits before unmounting the editor.
   async function guard(task: () => void) {
-    if (busy || editorBusy) return;
+    if (busy || anyEditorBusy) return;
     if (
-      dirty &&
+      hasUnsavedEditorChanges &&
       !(await confirm({
         title: 'Forkaste endringene?',
         message:
@@ -334,11 +343,12 @@ export function OwnerDashboard() {
     )
       return;
     setDirty(false);
+    setLocationDirty(false);
     task();
   }
   function linkGuard(event: MouseEvent<HTMLAnchorElement>, href: string) {
     if (
-      (!dirty && !editorBusy) ||
+      (!hasUnsavedEditorChanges && !anyEditorBusy) ||
       event.button !== 0 ||
       event.metaKey ||
       event.ctrlKey ||
@@ -368,10 +378,10 @@ export function OwnerDashboard() {
   async function login(e?: React.FormEvent) {
     e?.preventDefault();
     await action(async () => {
-      const result = await post<{ data: User }>(
-        'owner/login',
-        showcase ? {} : { email, password },
-      );
+      const result = await post<{ data: User }>('owner/login', {
+        email,
+        password,
+      });
       setPassword('');
       setUser(result.data);
       await loadBusinesses();
@@ -398,8 +408,8 @@ export function OwnerDashboard() {
     if (
       busy ||
       !(await confirm({
-        title: `${label} denne ${showcase ? 'demoforespørselen' : 'forespørselen'}?`,
-        message: `${booking.contact.name} · ${dateLabel(booking.event.date)}.${showcase ? ' Handlingen gjelder bare denne demoen; ingen ekte kunde varsles.' : ''}`,
+        title: `${label} denne forespørselen?`,
+        message: `${booking.contact.name} · ${dateLabel(booking.event.date)}.`,
         confirmLabel: {
           accept: 'Ja, godkjenn',
           decline: 'Ja, avslå',
@@ -446,21 +456,13 @@ export function OwnerDashboard() {
     if (
       busy ||
       !(await confirm({
-        title: showcase
-          ? 'Bekreft simulert betalingshandling'
-          : 'Bekreft betalingshandling',
-        message: `${labels[kind]} for denne forespørselen.${showcase ? ' Ingen penger flyttes og ingen betalingsleverandør kontaktes.' : ''}`,
-        confirmLabel: showcase
-          ? {
-              capture: 'Simuler belastning',
-              cancel: 'Simuler frigivelse',
-              refund: 'Simuler refusjon',
-            }[kind]
-          : {
-              capture: 'Belast beløpet',
-              cancel: 'Frigi beløpet',
-              refund: 'Refunder beløpet',
-            }[kind],
+        title: 'Bekreft betalingshandling',
+        message: `${labels[kind]} for denne forespørselen.`,
+        confirmLabel: {
+          capture: 'Belast beløpet',
+          cancel: 'Frigi beløpet',
+          refund: 'Refunder beløpet',
+        }[kind],
       }))
     )
       return;
@@ -473,11 +475,7 @@ export function OwnerDashboard() {
         { 'Idempotency-Key': paymentKeys.current[key] },
       );
       setPayment({ ...current, value: result.data });
-      setNotice(
-        showcase
-          ? 'Demobetalingen er oppdatert. Ingen penger er flyttet.'
-          : 'Betalingsstatus er oppdatert fra betalingsleverandøren.',
-      );
+      setNotice('Betalingsstatus er oppdatert fra betalingsleverandøren.');
     });
   }
   const notices = (
@@ -494,15 +492,6 @@ export function OwnerDashboard() {
       )}
     </>
   );
-  if (mode === 'demo')
-    return (
-      <main id="main" className="container service-page">
-        <h1>For truckeiere.</h1>
-        <div className="service-state">
-          <p>Eierverktøyet krever den tilkoblede bookingtjenesten.</p>
-        </div>
-      </main>
-    );
   if (!user)
     return (
       <main id="main" className="owner-entry owner-portal">
@@ -539,26 +528,6 @@ export function OwnerDashboard() {
           {notices}
           {checking ? (
             <p role="status">Gjør klart eierverktøyet …</p>
-          ) : showcase ? (
-            <div>
-              <span className="owner-kicker">DIN EGEN DEMO</span>
-              <h2>Ta plass bak disken.</h2>
-              <p>
-                Prøv eierrollen med seks fiktive trucks. Lagrede
-                demoforespørsler og endringer er bare dine.
-              </p>
-              <button
-                className="button button-primary"
-                disabled={busy}
-                onClick={() => void login()}
-              >
-                {busy ? 'Åpner …' : 'Åpne eierdemo'}
-                <ArrowRight size={20} />
-              </button>
-              <p className="owner-subtle">
-                Ingen konto eller passord. Ingen ekte bestilling eller betaling.
-              </p>
-            </div>
           ) : (
             <form onSubmit={login}>
               <span className="owner-kicker">VELKOMMEN TILBAKE</span>
@@ -610,7 +579,7 @@ export function OwnerDashboard() {
           {navigation.map(({ id, label, icon: NavIcon }) => (
             <button
               key={id}
-              disabled={busy || editorBusy}
+              disabled={busy || anyEditorBusy}
               className={tab === id ? 'active' : ''}
               aria-current={tab === id ? 'page' : undefined}
               onClick={() => changeTab(id)}
@@ -624,19 +593,13 @@ export function OwnerDashboard() {
           ))}
         </nav>
         <div className="owner-sidebar-bottom">
-          <div className="owner-demo-note">
+          <div className="owner-sidebar-tip">
             <span aria-hidden="true">✳</span>
-            <strong>
-              {showcase ? 'Et rom for å prøve.' : 'Klart for neste samling.'}
-            </strong>
-            <p>
-              {showcase
-                ? 'Alt du gjør her, blir i ditt eget demoområde.'
-                : 'Hold truckens opplysninger og kalender oppdatert.'}
-            </p>
+            <strong>Klart for neste samling.</strong>
+            <p>Hold truckens opplysninger og kalender oppdatert.</p>
           </div>
           <button
-            disabled={busy || editorBusy}
+            disabled={busy || anyEditorBusy}
             onClick={() => void guard(() => void logout())}
           >
             <LogOut size={18} /> Logg ut
@@ -646,12 +609,8 @@ export function OwnerDashboard() {
       <div className="owner-workspace">
         <header className="owner-topbar">
           <div>
-            <span className="owner-kicker">
-              {showcase ? 'HUMBITES · EIERDEMO' : 'HUMBITES FOR BEDRIFT'}
-            </span>
-            <span className="owner-session">
-              {showcase ? 'Ditt private demoområde' : user.email}
-            </span>
+            <span className="owner-kicker">HUMBITES FOR BEDRIFT</span>
+            <span className="owner-session">{user.email}</span>
           </div>
         </header>
         <section className="owner-switcher" aria-label="Velg bedrift og truck">
@@ -660,7 +619,7 @@ export function OwnerDashboard() {
             <select
               aria-label="Bedrift"
               value={business}
-              disabled={busy || editorBusy || !businesses.length}
+              disabled={busy || anyEditorBusy || !businesses.length}
               onChange={(e) => {
                 const next = e.target.value;
                 void guard(() => {
@@ -686,7 +645,7 @@ export function OwnerDashboard() {
             <select
               aria-label="Foodtruck"
               value={truck}
-              disabled={busy || editorBusy || !trucks.length}
+              disabled={busy || anyEditorBusy || !trucks.length}
               onChange={(e) => {
                 const next = e.target.value;
                 void guard(() => {
@@ -724,7 +683,7 @@ export function OwnerDashboard() {
           </div>
           <button
             className="owner-refresh"
-            disabled={busy || editorBusy || loading || inboxLoading || !base}
+            disabled={busy || anyEditorBusy || loading || inboxLoading || !base}
             onClick={() => void action(refresh)}
           >
             <RefreshCw size={18} /> Oppdater
@@ -1255,21 +1214,35 @@ export function OwnerDashboard() {
                   />
                 )}
                 {tab === 'settings' && (
-                  <SettingsForm
-                    key={base}
-                    path={`${base}/booking-settings`}
-                    initial={settings}
-                    onDirtyChange={setDirty}
-                    onBusyChange={setEditorBusy}
-                    onSaved={() => {
-                      setNotice(
-                        showcase
-                          ? 'Innstillingene er lagret i demoen.'
-                          : 'Innstillingene er lagret.',
-                      );
-                      void loadCore().catch((e) => setError(errorMessage(e)));
-                    }}
-                  />
+                  <>
+                    <TruckLocationForm
+                      key={`${base}-location`}
+                      path={base}
+                      initial={trucks.find((item) => String(item.id) === truck)}
+                      onDirtyChange={setLocationDirty}
+                      onBusyChange={setLocationBusy}
+                      onSaved={() => {
+                        setNotice('Truckens adresse og kartposisjon er lagret.');
+                        reloadCatalogue();
+                        void api<{ data: Option[] }>(
+                          `owner/businesses/${business}/trucks`,
+                        )
+                          .then((result) => setTrucks(result.data))
+                          .catch((cause) => setError(errorMessage(cause)));
+                      }}
+                    />
+                    <SettingsForm
+                      key={base}
+                      path={`${base}/booking-settings`}
+                      initial={settings}
+                      onDirtyChange={setDirty}
+                      onBusyChange={setEditorBusy}
+                      onSaved={() => {
+                        setNotice('Innstillingene er lagret.');
+                        void loadCore().catch((e) => setError(errorMessage(e)));
+                      }}
+                    />
+                  </>
                 )}
                 {tab === 'menu' && (
                   <MenuEditor
@@ -1297,9 +1270,7 @@ export function OwnerDashboard() {
           <section className="owner-payment-panel service-card">
             <div className="owner-panel-heading">
               <div>
-                <span className="owner-kicker">
-                  {showcase ? 'SIMULERT BETALING' : 'BETALING'}
-                </span>
+                <span className="owner-kicker">BETALING</span>
                 <h2 ref={paymentHeading} tabIndex={-1}>
                   {payment.booking.contact.name}
                 </h2>
@@ -1328,10 +1299,9 @@ export function OwnerDashboard() {
                   <dd>{formatNok(payment.value.refundedMinor)}</dd>
                 </dl>
                 <p>
-                  {showcase
-                    ? 'Alle beløp er simulerte. Ingen betalingsleverandør kontaktes og ingen penger flyttes.'
-                    : 'Handlingene gjelder gjenværende beløp hos betalingsleverandøren.'}{' '}
-                  Avlysning av en booking utfører ikke automatisk refusjon.
+                  Handlingene gjelder gjenværende beløp hos
+                  betalingsleverandøren. Avlysning av en booking utfører ikke
+                  automatisk refusjon.
                 </p>
                 <div className="service-actions">
                   {canCapture(payment.value) && (
@@ -1340,9 +1310,7 @@ export function OwnerDashboard() {
                       className="button button-primary"
                       onClick={() => void paymentAction('capture')}
                     >
-                      {showcase
-                        ? 'Simuler belastning'
-                        : 'Belast gjenværende beløp'}
+                      Belast gjenværende beløp
                     </button>
                   )}
                   {canRelease(payment.value) && (
@@ -1363,9 +1331,7 @@ export function OwnerDashboard() {
                       className="button button-secondary"
                       onClick={() => void paymentAction('refund')}
                     >
-                      {showcase
-                        ? 'Simuler refusjon'
-                        : 'Refunder gjenværende beløp'}
+                      Refunder gjenværende beløp
                     </button>
                   )}
                 </div>
@@ -1379,11 +1345,7 @@ export function OwnerDashboard() {
           <span>
             humbites for bedrift<span aria-hidden="true"> ✳</span>
           </span>
-          <span>
-            {showcase
-              ? 'Eksempeldata. Ekte muligheter.'
-              : 'Gode smaker. Godt samarbeid.'}
-          </span>
+          <span>Gode smaker. Godt samarbeid.</span>
         </footer>
       </div>
     </main>

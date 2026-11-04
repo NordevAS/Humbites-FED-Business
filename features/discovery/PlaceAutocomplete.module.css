@@ -26,11 +26,59 @@
     grid-column: 1 / -1;
   }
 }
-.root > label {
+.searchControl {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.searchControl > label {
   display: flex;
   flex: 1;
   height: auto;
+  min-width: 0;
   align-items: center;
+}
+.searchControl > label > span {
+  padding-right: 48px;
+}
+.locationButton {
+  position: absolute;
+  z-index: 2;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 6px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--action, #bf4927);
+  cursor: pointer;
+}
+.locationButton:hover:not(:disabled) {
+  background: var(--surface-warm, #f6e9d7);
+}
+.locationButton:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+.locationButton svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.locationButtonBusy svg {
+  opacity: 0.55;
 }
 .popup {
   position: absolute;
@@ -81,17 +129,17 @@
 }
 
 /* Form variant keeps the booking field's full-width label and validation layout. */
-.field > label {
+.field .searchControl > label {
   width: 100%;
   flex-direction: column;
   align-items: stretch;
 }
-.field > label > span {
+.field .searchControl > label > span {
   display: flex;
   flex-direction: column;
   gap: 8px;
   width: 100%;
 }
-.field input {
+.field .searchControl input {
   width: 100%;
 }
