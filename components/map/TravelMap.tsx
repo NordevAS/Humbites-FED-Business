@@ -31,6 +31,25 @@ const clientFailure = (): MapboxFailure => ({
   code: 'upstream',
   message: 'Kartinformasjonen kunne ikke hentes. Prøv igjen om litt.',
 });
+const openStreetMapStyle = {
+  version: 8 as const,
+  sources: {
+    'open-street-map': {
+      type: 'raster' as const,
+      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+      tileSize: 256,
+      attribution:
+        '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    },
+  },
+  layers: [
+    {
+      id: 'open-street-map',
+      type: 'raster' as const,
+      source: 'open-street-map',
+    },
+  ],
+};
 async function post<T>(
   operation: string,
   data: unknown,
@@ -94,6 +113,9 @@ export function TravelMap({
   const [mapState, setMapState] = useState<
     'loading' | 'ready' | 'unconfigured' | 'error'
   >('loading');
+  const [mapProvider, setMapProvider] = useState<'mapbox' | 'openstreetmap'>(
+    'mapbox',
+  );
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const library = useRef<typeof mapboxgl | null>(null);
@@ -142,13 +164,10 @@ export function TravelMap({
 
   useEffect(() => {
     if (publicToken === null) return;
-    if (!publicToken.startsWith('pk.')) {
-      setMapState('unconfigured');
-      return;
-    }
     if (!container.current) return;
     let disposed = false;
     let instance: mapboxgl.Map | null = null;
+    let fellBackToOpenStreetMap = !publicToken.startsWith('pk.');
     const target = container.current;
     let observer: ResizeObserver | undefined;
     import('mapbox-gl')
@@ -158,8 +177,10 @@ export function TravelMap({
         library.current = gl;
         instance = new gl.Map({
           container: target,
-          accessToken: publicToken,
-          style: 'mapbox://styles/mapbox/standard',
+          accessToken: publicToken.startsWith('pk.') ? publicToken : undefined,
+          style: fellBackToOpenStreetMap
+            ? openStreetMapStyle
+            : 'mapbox://styles/mapbox/standard',
           center: [12, 64.4],
           zoom: 3.5,
           attributionControl: true,
@@ -179,10 +200,24 @@ export function TravelMap({
         instance.dragRotate.disable();
         instance.touchZoomRotate.disableRotation();
         instance.on('load', () => {
-          if (!disposed) setMapState('ready');
+          if (!disposed) {
+            setMapProvider(
+              fellBackToOpenStreetMap ? 'openstreetmap' : 'mapbox',
+            );
+            setMapState('ready');
+          }
         });
-        instance.on('error', () => {
-          if (!disposed) setMapState('error');
+        instance.on('error', (event) => {
+          if (disposed) return;
+          // A missing or rejected public Mapbox token should not disable the
+          // location picker. Switch to public OSM raster tiles, which need no token.
+          if (!fellBackToOpenStreetMap && !instance?.loaded()) {
+            fellBackToOpenStreetMap = true;
+            setMapProvider('openstreetmap');
+            instance?.setStyle(openStreetMapStyle);
+            return;
+          }
+          if (fellBackToOpenStreetMap && event.error) setMapState('error');
         });
         instance.on('click', (event) => {
           if (!onLocationRef.current) return;
@@ -407,12 +442,16 @@ export function TravelMap({
             <strong>
               {mapState === 'loading'
                 ? 'Åpner kartet…'
-                : 'Kartvisningen er ikke tilgjengelig'}
+                : mapState === 'unconfigured'
+                  ? 'Kartet mangler konfigurasjon'
+                  : 'Kartet kunne ikke lastes'}
             </strong>
             <span>
               {mapState === 'loading'
                 ? 'Henter kart fra Mapbox.'
-                : 'Du kan fortsatt utforske truckene og planlegge arrangementet.'}
+                : mapState === 'unconfigured'
+                  ? 'Du kan fortsatt søke etter adressen, men kartvalg krever at karttjenesten konfigureres.'
+                  : 'Kontroller internettforbindelsen og prøv igjen. Du kan fortsatt søke etter en adresse.'}
             </span>
           </div>
         )}
@@ -423,12 +462,19 @@ export function TravelMap({
         </p>
       )}
       <p className={styles.caption}>
-        Nærmeste adresse fra{' '}
+        Kartdata fra{' '}
+        {mapProvider === 'openstreetmap' ? (
+          <a href="https://www.openstreetmap.org/copyright">
+            OpenStreetMap-bidragsytere
+          </a>
+        ) : (
+          <a href="https://www.mapbox.com/about/maps/">Mapbox</a>
+        )}
+        . Nærmeste adresse hentes fra{' '}
         <a href="https://www.kartverket.no/api-og-data/eiendomsdata/brukarrettleiing-adresse-api">
           Kartverket
-        </a>{' '}
-        · <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
-        Markøren viser alltid punktet du valgte.
+        </a>
+        . Markøren viser alltid punktet du valgte.
       </p>
       <p id={`${fieldId}-map-help`} className={styles.caption}>
         Zoom med musehjul eller styreflate, eller knip med to fingre. Bla
