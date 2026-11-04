@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from 'react';
 import { api, errorMessage, post } from '@/lib/booking/client';
 import { formatNok } from '@/domain';
 import { parseMoney } from './SettingsForm';
-import { uploadPhoto } from './ImageManager';
 import { CategoryManager } from './CategoryManager';
 import type { MenuCategory } from '@/domain';
 export type OwnerItem = {
@@ -58,9 +57,9 @@ export function MenuEditor({
   const busy = menuBusy || categoryBusy;
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [photos, setPhotos] = useState<Record<string, File>>({});
+  const [gallery, setGallery] = useState<{ id: string | number; url: string; isMain?: boolean }[]>([]);
   const menuDirty =
-    JSON.stringify(form) !== baseline || Object.keys(photos).length > 0;
+    JSON.stringify(form) !== baseline;
   const dirty = menuDirty || categoryDirty;
   const callbacks = useRef({ onDirtyChange, onBusyChange });
   callbacks.current = { onDirtyChange, onBusyChange };
@@ -70,6 +69,9 @@ export function MenuEditor({
   useEffect(() => {
     onBusyChange?.(busy);
   }, [busy, onBusyChange]);
+  useEffect(() => {
+    void api<{ data: typeof gallery }>(`${mediaPath}/images`).then((result) => setGallery(result.data)).catch(() => setGallery([]));
+  }, [mediaPath]);
   useEffect(
     () => () => {
       callbacks.current.onDirtyChange?.(false);
@@ -92,23 +94,15 @@ export function MenuEditor({
       return;
     setForm(next);
     setBaseline(JSON.stringify(next));
-    setPhotos({});
     setError('');
   }
-  async function photo(id: string | number) {
-    const file = photos[String(id)];
-    if (!file) return;
+  async function savePhoto(id: string | number, imageUrl: string) {
     setBusy(true);
     setError('');
     try {
-      await uploadPhoto(mediaPath, file, id);
-      setPhotos((current) => {
-        const next = { ...current };
-        delete next[String(id)];
-        return next;
-      });
+      await api(`${path}/${id}`, { method: 'PATCH', body: JSON.stringify({ imageUrl }) });
       await onSaved();
-      setNotice('Bildet til retten er lagret.');
+      setNotice('Menybildet er oppdatert.');
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -244,27 +238,11 @@ export function MenuEditor({
             </div>
             <label className="field">
               <span>Bilde av {item.name}</span>
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file)
-                    setPhotos((current) => ({
-                      ...current,
-                      [String(item.id)]: file,
-                    }));
-                }}
-              />
+              <select defaultValue={item.imageUrl || item.image || ''} onChange={(e) => void savePhoto(item.id, e.target.value)} disabled={busy}>
+                <option value="">Ikke bruk bilde</option>
+                {gallery.map((photo) => <option key={photo.id} value={photo.url}>{photo.isMain ? 'Hovedbilde' : 'Galleri'} · bilde {photo.id}</option>)}
+              </select>
             </label>
-            <button
-              type="button"
-              disabled={busy || !photos[String(item.id)]}
-              className="button button-secondary"
-              onClick={() => void photo(item.id)}
-            >
-              Last opp bilde til retten
-            </button>
           </article>
         ))}
       </div>
