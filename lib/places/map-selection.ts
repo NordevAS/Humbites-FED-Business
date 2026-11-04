@@ -25,12 +25,16 @@ export function createMapSelection(
     point: Coordinates,
     update: (location: EventLocation) => void,
     announce: (message: string) => void,
+    onPending?: (pending: boolean) => void,
   ) {
     cancel();
     const current = generation;
     const active = new AbortController();
     controller = active;
-    update({ coordinates: point, label: pointLabel(point), source: 'map' });
+    const deferSelection = reverseEndpoint === '/api/places/osm-reverse';
+    if (!deferSelection)
+      update({ coordinates: point, label: pointLabel(point), source: 'map' });
+    onPending?.(true);
     announce('Henter adressen til kartpunktet …');
     const timeout = setTimeout(() => active.abort(), 9000);
     try {
@@ -64,14 +68,23 @@ export function createMapSelection(
       } else
         announce(
           result.status === 'not-found'
-            ? 'Ingen adresse innen 100 meter. Kartpunktet er valgt; skriv gjerne et beskrivende sted i arrangementsnotatet.'
-            : 'Adressen kunne ikke hentes. Kartpunktet er fortsatt valgt.',
+            ? deferSelection
+              ? 'Fant ingen adresse ved kartpunktet. Den forrige posisjonen er beholdt; søk etter en adresse i stedet.'
+              : 'Ingen adresse innen 100 meter. Kartpunktet er valgt; skriv gjerne et beskrivende sted i arrangementsnotatet.'
+            : deferSelection
+              ? 'Adressen kunne ikke hentes. Den forrige posisjonen er beholdt.'
+              : 'Adressen kunne ikke hentes. Kartpunktet er fortsatt valgt.',
         );
     } catch {
       if (current === generation)
-        announce('Adressen kunne ikke hentes. Kartpunktet er fortsatt valgt.');
+        announce(
+          deferSelection
+            ? 'Adressen kunne ikke hentes. Den forrige posisjonen er beholdt.'
+            : 'Adressen kunne ikke hentes. Kartpunktet er fortsatt valgt.',
+        );
     } finally {
       clearTimeout(timeout);
+      if (current === generation) onPending?.(false);
       if (controller === active) controller = null;
     }
   }

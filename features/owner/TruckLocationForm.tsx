@@ -65,7 +65,11 @@ function detailsFromLocation(location: EventLocation): LocationFields {
       address: location.addressDetails?.address || match[1].trim(),
       postalCode: location.addressDetails?.postalCode || match[2],
       city: location.addressDetails?.city || match[3].trim(),
-      state: location.addressDetails?.state || '',
+      state:
+        location.addressDetails?.state ||
+        location.addressDetails?.city ||
+        location.addressDetails?.country ||
+        '',
       country: location.addressDetails?.country || match[4]?.trim() || 'Norge',
     };
   }
@@ -85,7 +89,10 @@ function detailsFromLocation(location: EventLocation): LocationFields {
       city: location.addressDetails?.city || parsedCity,
       state:
         location.addressDetails?.state ||
-        (parts.length > 3 ? parts.at(-3) || '' : ''),
+        (parts.length > 3 ? parts.at(-3) || '' : '') ||
+        location.addressDetails?.city ||
+        location.addressDetails?.country ||
+        '',
       country: location.addressDetails?.country || countryFromLabel,
     };
   }
@@ -130,9 +137,14 @@ export function TruckLocationForm({
 }) {
   const [location, setLocation] = useState(() => initialLocation(initial));
   const [fields, setFields] = useState(() => fieldsFor(initial));
+  const savedLocation = useRef({
+    location: initialLocation(initial),
+    fields: fieldsFor(initial),
+  });
   const initialValue = JSON.stringify(normalize(initial));
   const [baseline, setBaseline] = useState(initialValue);
   const [busy, setBusy] = useState(false);
+  const [resolvingLocation, setResolvingLocation] = useState(false);
   const [error, setError] = useState('');
   const callbacks = useRef({ onDirtyChange, onBusyChange });
   callbacks.current = { onDirtyChange, onBusyChange };
@@ -145,7 +157,10 @@ export function TruckLocationForm({
   const dirty = currentValue !== baseline;
 
   useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
-  useEffect(() => onBusyChange?.(busy), [busy, onBusyChange]);
+  useEffect(
+    () => onBusyChange?.(busy || resolvingLocation),
+    [busy, resolvingLocation, onBusyChange],
+  );
   useEffect(
     () => () => {
       callbacks.current.onDirtyChange?.(false);
@@ -156,13 +171,22 @@ export function TruckLocationForm({
   useEffect(() => {
     const value = JSON.stringify(normalize(initial));
     if (!dirty) {
-      setLocation(initialLocation(initial));
-      setFields(fieldsFor(initial));
+      const nextLocation = initialLocation(initial);
+      const nextFields = fieldsFor(initial);
+      savedLocation.current = { location: nextLocation, fields: nextFields };
+      setLocation(nextLocation);
+      setFields(nextFields);
       setBaseline(value);
     }
   }, [initial, dirty]);
 
+  function restoreSavedLocation() {
+    setLocation(savedLocation.current.location);
+    setFields(savedLocation.current.fields);
+  }
+
   function chooseLocation(next: EventLocation) {
+    setResolvingLocation(false);
     setLocation(next);
     setFields(
       next.coordinates && isCoordinates(next.coordinates)
@@ -174,9 +198,10 @@ export function TruckLocationForm({
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (busy) return;
+    if (busy || resolvingLocation) return;
     if (!point || !isCoordinates(point)) {
       setError('Søk opp en adresse eller velg et punkt på kartet først.');
+      restoreSavedLocation();
       return;
     }
     if (
@@ -187,6 +212,7 @@ export function TruckLocationForm({
       setError(
         'Stedet mangler adresse, by eller land. Velg en adresse eller et kartpunkt nær en adresse.',
       );
+      restoreSavedLocation();
       return;
     }
     setBusy(true);
@@ -205,12 +231,16 @@ export function TruckLocationForm({
         }),
       });
       const nextValue = JSON.stringify(normalize(result.data));
+      const nextLocation = initialLocation(result.data);
+      const nextFields = fieldsFor(result.data);
+      savedLocation.current = { location: nextLocation, fields: nextFields };
       setBaseline(nextValue);
-      setFields(fieldsFor(result.data));
-      setLocation(initialLocation(result.data));
+      setFields(nextFields);
+      setLocation(nextLocation);
       onSaved();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : errorMessage(cause));
+      restoreSavedLocation();
     } finally {
       setBusy(false);
     }
@@ -245,6 +275,7 @@ export function TruckLocationForm({
         onLocationChange={chooseLocation}
         showLocationSearch={false}
         reverseProvider="osm"
+        onLocationLookupPending={setResolvingLocation}
         compact
       />
       <div className="form-grid">
@@ -271,25 +302,32 @@ export function TruckLocationForm({
       </div>
       <div className="service-actions">
         <span role="status">
-          {dirty ? 'Ulagrede endringer' : 'Ingen ulagrede endringer'}
+          {resolvingLocation
+            ? 'Henter adresse fra kartet …'
+            : dirty
+              ? 'Ulagrede endringer'
+              : 'Ingen ulagrede endringer'}
         </span>
         <button
           type="button"
-          disabled={busy || !dirty}
+          disabled={busy || resolvingLocation || !dirty}
           className="button button-secondary"
           onClick={() => {
-            setLocation(initialLocation(initial));
-            setFields(fieldsFor(initial));
+            restoreSavedLocation();
             setError('');
           }}
         >
           Forkast
         </button>
         <button
-          disabled={busy || !dirty || !point}
+          disabled={busy || resolvingLocation || !dirty || !point}
           className="button button-primary"
         >
-          {busy ? 'Lagrer …' : 'Lagre plassering'}
+          {busy
+            ? 'Lagrer …'
+            : resolvingLocation
+              ? 'Henter adresse …'
+              : 'Lagre plassering'}
         </button>
       </div>
     </form>

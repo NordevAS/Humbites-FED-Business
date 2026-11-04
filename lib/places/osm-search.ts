@@ -36,6 +36,7 @@ const featureSchema = z.object({
     neighbourhood: z.string().optional(),
     quarter: z.string().optional(),
     county: z.string().optional(),
+    region: z.string().optional(),
     state: z.string().optional(),
     country: z.string().optional(),
   }),
@@ -80,10 +81,18 @@ function suggestionFromFeature(
     properties.county ||
     '';
   const postalCity = [properties.postcode, city].filter(Boolean).join(' ');
+  const state =
+    properties.state ||
+    properties.region ||
+    properties.county ||
+    city ||
+    properties.country ||
+    '';
+  const labelState = properties.state || properties.region || properties.county;
   const label = [
     address || properties.name,
     postalCity,
-    properties.state,
+    labelState,
     properties.country,
   ]
     .filter(Boolean)
@@ -98,7 +107,7 @@ function suggestionFromFeature(
     addressDetails: {
       address: address || properties.name || '',
       city,
-      state: properties.state ?? '',
+      state,
       postalCode: properties.postcode ?? '',
       country: properties.country,
     },

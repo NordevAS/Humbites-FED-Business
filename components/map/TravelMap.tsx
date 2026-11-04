@@ -25,6 +25,7 @@ export interface TravelMapProps {
   compact?: boolean;
   showLocationSearch?: boolean;
   reverseProvider?: 'kartverket' | 'osm';
+  onLocationLookupPending?: (pending: boolean) => void;
 }
 
 const clientFailure = (): MapboxFailure => ({
@@ -92,6 +93,7 @@ export function TravelMap({
   compact = false,
   showLocationSearch = true,
   reverseProvider = 'kartverket',
+  onLocationLookupPending,
 }: TravelMapProps) {
   const { showcase } = useDemo();
   const fieldId = useId();
@@ -130,6 +132,7 @@ export function TravelMap({
   const library = useRef<typeof mapboxgl | null>(null);
   const markers = useRef<mapboxgl.Marker[]>([]);
   const onLocationRef = useRef(onLocationChange);
+  const onLocationLookupPendingRef = useRef(onLocationLookupPending);
   const longitude = location?.coordinates?.longitude;
   const latitude = location?.coordinates?.latitude;
   useEffect(() => () => mapSelection.cancel(), [mapSelection]);
@@ -141,6 +144,7 @@ export function TravelMap({
     ) {
       mapSelection.cancel();
       pendingPoint.current = undefined;
+      onLocationLookupPendingRef.current?.(false);
       setReverseMessage('');
     }
   }, [longitude, latitude, mapSelection]);
@@ -170,6 +174,10 @@ export function TravelMap({
   useEffect(() => {
     onLocationRef.current = onLocationChange;
   }, [onLocationChange]);
+
+  useEffect(() => {
+    onLocationLookupPendingRef.current = onLocationLookupPending;
+  }, [onLocationLookupPending]);
 
   useEffect(() => {
     if (publicToken === null) return;
@@ -239,6 +247,7 @@ export function TravelMap({
             point,
             (next) => onLocationRef.current?.(next),
             setReverseMessage,
+            (pending) => onLocationLookupPendingRef.current?.(pending),
           );
         });
         observer = new ResizeObserver(() => instance?.resize());
