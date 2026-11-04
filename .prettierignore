@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.next/
+.wrangler/
+.sites-runtime/
+outputs/
+vendor/
+scripts/vite/
+pnpm-lock.yaml

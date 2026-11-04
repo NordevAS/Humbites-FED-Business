@@ -1,0 +1,164 @@
+.root {
+  border: 1px solid var(--line, #e8ddd1);
+  border-radius: 20px;
+  background: var(--surface, #fff);
+  color: var(--ink, #261c16);
+}
+.searchArea {
+  padding: 22px;
+}
+/* Reuse discovery's accessible search without clipping its options over the map. */
+.searchArea :global(.search-field) {
+  width: 100%;
+  min-height: 76px;
+  padding: 14px;
+  border: 1px solid var(--control-line, #94806f);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+}
+.searchArea :global(.search-field) > span {
+  flex: 1;
+}
+.searchArea :global(.search-field) > svg {
+  flex-shrink: 0;
+}
+.searchArea :global(.search-field) input {
+  min-height: 32px;
+  height: auto;
+  font-size: 16px;
+}
+.root :is(button, input, select):focus-visible {
+  outline: 3px solid var(--focus, #7445b7);
+  outline-offset: 3px;
+}
+.mapFrame {
+  position: relative;
+  overflow: hidden;
+  height: 340px;
+  background: #f5f1e9;
+  border-block: 1px solid var(--line, #e8ddd1);
+}
+.compact .mapFrame {
+  height: 260px;
+}
+.map {
+  position: absolute;
+  inset: 0;
+}
+.mapMessage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  text-align: center;
+  padding: 28px;
+  background: radial-gradient(ellipse at 65% 30%, #fffaf1, #f1ebdf);
+}
+.mapMessage svg {
+  color: #a5724d;
+  margin-bottom: 7px;
+}
+.mapMessage strong {
+  font-size: 1.08rem;
+}
+.mapMessage span {
+  color: var(--muted, #756a61);
+  max-width: 320px;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+.caption {
+  font-size: 0.78rem;
+  color: var(--muted, #756a61);
+  line-height: 1.6;
+  margin: 0;
+  padding: 12px 20px;
+}
+.travel {
+  padding: 0 20px 16px;
+}
+.travel .caption {
+  padding: 10px 0 0;
+}
+.help {
+  font-size: 0.86rem;
+  line-height: 1.6;
+  color: var(--muted, #756a61);
+  margin: 10px 0 0;
+}
+.journeys {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.journeys li {
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 12px 0;
+  font-size: 0.88rem;
+  border-bottom: 1px solid var(--line, #e8ddd1);
+}
+.journeys strong {
+  text-align: right;
+}
+.unavailable {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--muted, #756a61);
+}
+.unavailable button {
+  border: 0;
+  background: transparent;
+  color: var(--action, #bf4927);
+  text-decoration: underline;
+  cursor: pointer;
+  white-space: nowrap;
+  font: inherit;
+  font-weight: 650;
+  padding: 6px;
+}
+.truckMarker,
+.eventMarker {
+  display: grid;
+  place-items: center;
+  width: 35px;
+  height: 35px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: #bf4927;
+  color: #fff;
+  font: 800 17px/1 sans-serif;
+  box-shadow: 0 2px 10px #261c1630;
+  cursor: pointer;
+}
+.eventMarker {
+  background: #7445b7;
+  font-size: 15px;
+}
+@media (max-width: 500px) {
+  .searchArea {
+    padding: 16px;
+  }
+  .mapFrame {
+    height: 280px;
+  }
+  .compact .mapFrame {
+    height: 240px;
+  }
+  .caption {
+    padding-inline: 16px;
+  }
+  .travel {
+    padding-inline: 16px;
+  }
+  .journeys li {
+    gap: 8px;
+  }
+}

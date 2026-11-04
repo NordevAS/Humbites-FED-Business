@@ -1,0 +1,188 @@
+/* Shared discovery controls: a compact hero panel and a horizontal results bar. */
+.discovery-search {
+  background: var(--pulse-yellow);
+  color: var(--ink);
+  border: 1.5px solid var(--ink);
+  border-radius: 14px;
+  padding: 20px;
+}
+.discovery-search .event-search {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 0.8fr) auto;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  background: none;
+  align-items: stretch;
+}
+.discovery-search .search-field {
+  min-width: 0;
+  min-height: 68px;
+  background: var(--pulse-cream);
+  color: var(--ink);
+  border: 1.5px solid var(--ink);
+  border-radius: 7px;
+  padding: 10px 12px;
+  gap: 10px;
+}
+.discovery-search .search-field > span {
+  min-width: 0;
+  flex: 1;
+}
+.discovery-search .field-caption {
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.discovery-search .search-field input {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  font-size: 16px;
+  height: 28px;
+}
+.discovery-search .search-field > svg {
+  flex-shrink: 0;
+  width: 18px;
+}
+.discovery-search .input-suffix {
+  display: none;
+}
+.discovery-search .search-button {
+  min-height: 52px;
+  min-width: 0;
+  margin: 0;
+  background: var(--ink);
+  color: var(--pulse-cream);
+  border-radius: 7px;
+  justify-content: space-between;
+}
+.discovery-search .search-button:hover {
+  background: #443226;
+}
+.discovery-search .search-footnote {
+  display: block;
+  margin: 12px 0 0;
+  color: #47351b;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.discovery-search--hero {
+  max-width: 520px;
+  box-shadow: 5px 5px 0 var(--ink);
+}
+.discovery-search--hero .event-search {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.discovery-search--hero .location-field,
+.discovery-search--hero .search-button {
+  grid-column: 1 / -1;
+}
+.discovery-home .pulse-hero-inner {
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 48px;
+  padding-block: 48px;
+}
+.discovery-home .pulse-hero h1 {
+  font-size: clamp(54px, 5.6vw, 80px);
+}
+.discovery-home .pulse-hero-copy > p {
+  max-width: 440px;
+  margin-bottom: 22px;
+}
+.discovery-results {
+  min-height: 65vh;
+}
+.results-search {
+  padding-top: 28px;
+}
+.discovery-results .catalogue {
+  padding-top: 38px;
+  padding-bottom: 50px;
+}
+.discovery-results h1 {
+  font-size: clamp(30px, 4vw, 48px);
+  line-height: 1.05;
+  letter-spacing: -0.045em;
+  margin: 12px 0 0;
+}
+.discovery-results .section-heading {
+  margin-bottom: 24px;
+}
+.discovery-results .pulse-cuisine-nav {
+  gap: 10px;
+  padding-bottom: 20px;
+  overflow-x: auto;
+}
+.discovery-results .pulse-cuisine {
+  flex-shrink: 0;
+  min-width: 92px;
+}
+.discovery-results .pulse-cuisine-photo {
+  width: 62px;
+  height: 62px;
+}
+.results-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding-block: 24px;
+  border-top: 1px solid var(--ink);
+  font-size: 13px;
+}
+@media (max-width: 1000px) {
+  .discovery-search--results .event-search {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 700px) {
+  /* Override the older mobile hero's display:contents so the form remains inside it. */
+  .discovery-home .pulse-hero {
+    display: block;
+  }
+  .discovery-home .pulse-hero-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    gap: 0;
+    padding: 0;
+  }
+  .discovery-home .pulse-hero-copy {
+    padding: 28px 20px 30px;
+  }
+  .discovery-home .pulse-hero h1 {
+    font-size: clamp(48px, 12vw, 72px);
+  }
+  .discovery-home .pulse-hero-visual {
+    padding-top: 16px;
+  }
+  .discovery-home .pulse-hero-copy > p {
+    font-size: 15px;
+  }
+  .discovery-search {
+    padding: 14px;
+  }
+  .discovery-search .search-field {
+    padding: 9px;
+    gap: 6px;
+  }
+  .discovery-search .search-field > svg {
+    display: none;
+  }
+  .discovery-search--results .location-field,
+  .discovery-search--results .search-button {
+    grid-column: 1 / -1;
+  }
+  .results-search {
+    padding-top: 18px;
+  }
+  .discovery-results .catalogue {
+    padding-top: 28px;
+  }
+  .results-footer {
+    flex-direction: column;
+    gap: 10px;
+  }
+}

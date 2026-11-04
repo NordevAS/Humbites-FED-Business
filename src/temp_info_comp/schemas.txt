@@ -1,8 +1,0 @@
-// companies
-"": {
-        "name": "",
-        "login_key": "",
-        "password": "",
-        "isProcessed": true/false,
-        "location": ""
-    }

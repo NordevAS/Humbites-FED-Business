@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./*"],
+      "next/server": ["./node_modules/vinext/dist/shims/server.js"]
+    }
+  }
+}

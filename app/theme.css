@@ -1,0 +1,329 @@
+/* Shared Humbites theme. Keep this file identical in each published version.
+   Layout and domain behavior belong to each app; these tokens own the identity. */
+:root {
+  --hb-cream: #fff8ed;
+  --hb-surface: #fffdf8;
+  --hb-warm: #f2e8da;
+  --hb-red: #bd3824;
+  --hb-red-hover: #972b1b;
+  --hb-yellow: #ffda55;
+  --hb-ink: #2b2119;
+  --hb-muted: #6f6054;
+  --hb-line: #dccbb8;
+  --hb-control: #8b7562;
+  --hb-focus: #2456a8;
+  --hb-font: Arial, Helvetica, sans-serif;
+  --hb-radius: 14px;
+  --canvas: var(--hb-cream);
+  --surface: var(--hb-surface);
+  --surface-warm: var(--hb-warm);
+  --ink: var(--hb-ink);
+  --muted: var(--hb-muted);
+  --brand: var(--hb-red);
+  --action: var(--hb-red);
+  --action-hover: var(--hb-red-hover);
+  --line: var(--hb-line);
+  --control-line: var(--hb-control);
+  --focus: var(--hb-focus);
+  --pulse-cream: var(--hb-cream);
+  --pulse-red: var(--hb-red);
+  --pulse-yellow: var(--hb-yellow);
+  --pulse-ink: var(--hb-ink);
+  --radius: var(--hb-radius);
+}
+html body {
+  background: var(--hb-cream);
+  color: var(--hb-ink);
+  font-family: var(--hb-font);
+}
+body h1,
+body h2,
+body h3,
+body .wordmark,
+body .owner-wordmark {
+  font-family: var(--hb-font);
+  font-weight: 800;
+}
+body h1 {
+  letter-spacing: -0.055em;
+}
+body h2,
+body h3 {
+  letter-spacing: -0.035em;
+}
+body :focus-visible {
+  outline: 3px solid var(--hb-focus);
+  outline-offset: 4px;
+}
+body .button,
+body .pickup-button,
+body .pickup-outline {
+  border-radius: var(--hb-radius);
+  min-height: 48px;
+  box-shadow: none;
+  font-weight: 700;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+body .button:hover {
+  transform: none;
+  box-shadow: none;
+}
+body .button-primary,
+body .pickup-button {
+  background: var(--hb-red);
+  border-color: var(--hb-red);
+  color: var(--hb-cream);
+}
+body .button-primary:hover,
+body .pickup-button:hover {
+  background: var(--hb-red-hover);
+  border-color: var(--hb-red-hover);
+}
+body .button-dark {
+  background: var(--hb-ink);
+  color: var(--hb-cream);
+}
+body .button-secondary,
+body .pickup-outline {
+  background: var(--hb-surface);
+  color: var(--hb-ink);
+  border-color: var(--hb-control);
+}
+body .site-header {
+  background: var(--hb-cream);
+  border-bottom: 1px solid var(--hb-line);
+}
+body .wordmark {
+  color: var(--hb-ink);
+}
+body .brand-dot,
+body .pulse-brand-star {
+  color: var(--hb-red);
+}
+body .pulse-header-cta {
+  border-radius: 12px;
+}
+
+/* Pickup and owner pages predate the shared tokens. Adapt their surfaces here
+   until those components can consume the tokens directly. Status colors stay semantic. */
+body .pickup-page,
+body .owner-portal {
+  color: var(--hb-ink);
+}
+body .owner-portal {
+  --owner-border: var(--hb-line);
+  --owner-muted: var(--hb-muted);
+}
+body .pickup-hero,
+body .owner-welcome {
+  background: var(--hb-red);
+  color: var(--hb-cream);
+}
+body .pickup-hero h1 em {
+  color: var(--hb-yellow);
+}
+body .pickup-hero .pickup-button,
+body .pickup-sticker,
+body .pickup-strip,
+body .pickup-menu-hero,
+body .pickup-status-hero,
+body .pickup-counter button,
+body .pickup-cart h2 span,
+body .owner-metrics > div.owner-metric-value {
+  background: var(--hb-yellow);
+  color: var(--hb-ink);
+  border-color: var(--hb-yellow);
+}
+body .pickup-hero .pickup-button:hover {
+  background: var(--hb-cream);
+}
+body .pickup-hero :focus-visible,
+body .owner-welcome :focus-visible,
+body .owner-sidebar :focus-visible {
+  outline-color: var(--hb-yellow);
+}
+body .pickup-truck-card,
+body .pickup-menu-item,
+body .pickup-cart,
+body .pickup-order-card,
+body .pickup-panel,
+body .owner-panel,
+body .owner-metrics > button,
+body .owner-metrics > div,
+body .pickup-search,
+body .pickup-filters button {
+  background: var(--hb-surface);
+  border-color: var(--hb-line);
+}
+body .pickup-booking-callout,
+body .pickup-demo-guide,
+body .ordering-portions,
+body .ordering-card-estimate {
+  background: var(--hb-warm);
+}
+body .pickup-page .pickup-fineprint,
+body .pickup-truck-copy p,
+body .pickup-menu-item p,
+body .pickup-menu-item small,
+body .pickup-section-heading p,
+body .ordering-results-intro,
+body .ordering-portions p,
+body .ordering-per-guest {
+  color: var(--hb-muted);
+}
+body .pickup-filters button[aria-pressed='true'],
+body .pickup-mobile-cart,
+body .owner-sidebar,
+body .showcase-bar {
+  background: var(--hb-ink);
+  color: var(--hb-cream);
+}
+body .owner-workspace {
+  background: var(--hb-cream);
+}
+body .owner-sidebar nav button.active {
+  background: var(--hb-yellow);
+  color: var(--hb-ink);
+  border-color: var(--hb-yellow);
+}
+body .owner-sidebar nav button > b {
+  background: var(--hb-red);
+}
+body .owner-wordmark > span,
+body .owner-demo-note > span,
+body .owner-welcome-art,
+body .showcase-bar a,
+body .showcase-bar button {
+  color: var(--hb-yellow);
+}
+body .pickup-cart input,
+body .pickup-cart textarea,
+body .pickup-owner input,
+body .pickup-owner select {
+  border-color: var(--hb-control);
+}
+
+/* The switcher stays in document flow. Existing sticky page headers retain
+   their top edge and do not cover this navigation or acquire guessed offsets. */
+.hb-version-bar {
+  position: relative;
+  z-index: 80;
+  background: var(--hb-ink);
+  color: var(--hb-cream);
+  font: 12px/1.5 var(--hb-font);
+  border-bottom: 1px solid #554335;
+}
+.hb-version-inner {
+  max-width: 1380px;
+  padding: 6px 48px;
+  margin: auto;
+  min-height: 48px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+.hb-version-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  font-weight: 700;
+  color: inherit;
+  text-decoration: none;
+}
+.hb-version-home:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.hb-version-home > span {
+  color: var(--hb-yellow);
+  font-size: 20px;
+}
+.hb-version-switcher {
+  position: relative;
+}
+.hb-version-switcher > summary {
+  cursor: pointer;
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid #867261;
+  border-radius: 8px;
+  color: var(--hb-cream);
+  font-weight: 700;
+}
+.hb-version-switcher[open] > summary {
+  background: #47372a;
+}
+.hb-version-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(340px, calc(100vw - 32px));
+  padding: 10px;
+  border: 1px solid var(--hb-line);
+  border-radius: var(--hb-radius);
+  box-shadow: 0 10px 30px #2b211925;
+  background: var(--hb-surface);
+  color: var(--hb-ink);
+}
+.hb-version-menu a {
+  display: block;
+  padding: 12px;
+  border-radius: 8px;
+  color: inherit;
+  text-decoration: none;
+}
+.hb-version-menu a:hover {
+  background: var(--hb-warm);
+}
+.hb-version-menu a[aria-current='page'] {
+  background: var(--hb-yellow);
+}
+.hb-version-menu strong,
+.hb-version-menu span {
+  display: block;
+}
+.hb-version-menu span {
+  font-size: 11px;
+  color: var(--hb-muted);
+  margin-top: 3px;
+}
+.hb-version-bar :focus-visible {
+  outline-color: var(--hb-yellow);
+}
+.hb-version-menu :focus-visible {
+  outline-color: var(--hb-focus);
+}
+@media (max-width: 720px) {
+  .hb-version-inner {
+    padding: 6px 16px;
+    gap: 12px;
+  }
+  .hb-version-home {
+    font-size: 11px;
+  }
+  .hb-version-switcher > summary {
+    font-size: 11px;
+    padding-inline: 9px;
+  }
+  body .pickup-counter button {
+    width: 44px;
+    height: 44px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
