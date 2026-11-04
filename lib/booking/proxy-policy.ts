@@ -57,13 +57,15 @@ export function resolveTarget(method: string, path: string): Target | null {
       auth: 'owner',
     };
   const owner = path.match(
-    /^owner\/businesses\/(\d+)\/trucks(?:\/(\d+)(?:\/(bookings|booking-settings|menu|menu-options)(?:\/([A-Za-z0-9_-]+)(?:\/(accept|decline|cancel|assignment))?)?)?)?$/,
+    /^owner\/businesses\/(\d+)\/trucks(?:\/(\d+)(?:\/(overview|bookings|booking-settings|schedule|schedule-preview|menu|menu-options|menu-categories)(?:\/([A-Za-z0-9_-]+)(?:\/(accept|decline|cancel|assignment))?)?)?)?$/,
   );
   if (!owner) return null;
   const [, business, truck, section, item, action] = owner;
   const base = `me/businesses/${business}/foodtrucks${truck ? `/${truck}` : ''}`;
   if (!section && method === 'GET' && !truck)
     return { path: base, auth: 'owner' };
+  if (section === 'overview' && method === 'GET' && !item)
+    return { path: `${base}/overview`, auth: 'owner' };
   if (
     section === 'bookings' &&
     ((method === 'GET' && !action) ||
@@ -78,11 +80,28 @@ export function resolveTarget(method: string, path: string): Target | null {
   if (
     section === 'booking-settings' &&
     !item &&
-    ['GET', 'PUT'].includes(method)
+    ['GET', 'PATCH'].includes(method)
   )
     return { path: `${base}/booking-settings`, auth: 'owner' };
+  if (
+    section === 'schedule' &&
+    !item &&
+    ['GET', 'PUT'].includes(method)
+  )
+    return { path: `${base}/schedule`, auth: 'owner' };
+  if (section === 'schedule-preview' && method === 'GET' && !item)
+    return { path: `${base}/schedule-preview`, auth: 'owner' };
   if (section === 'menu-options' && method === 'GET' && !item)
     return { path: `${base}/menu-options`, auth: 'owner' };
+  if (
+    section === 'menu-categories' &&
+    ((!item && method === 'POST') ||
+      (item && !action && ['PATCH', 'DELETE'].includes(method)))
+  )
+    return {
+      path: `${base}/menu-categories${item ? `/${item}` : ''}`,
+      auth: 'owner',
+    };
   if (
     section === 'menu' &&
     ((['GET', 'POST'].includes(method) && !item) ||
@@ -122,13 +141,14 @@ export function permittedQuery(
     return null;
   for (const key of query.keys())
     if (
-      !['page', 'limit', 'status'].includes(key) ||
+      !['page', 'limit', 'status', 'q'].includes(key) ||
       query.getAll(key).length !== 1
     )
       return null;
   const page = query.get('page'),
     limit = query.get('limit'),
-    status = query.get('status');
+    status = query.get('status'),
+    search = query.get('q');
   if (page && (!/^\d+$/.test(page) || Number(page) < 1 || Number(page) > 9999))
     return null;
   if (
@@ -140,6 +160,8 @@ export function permittedQuery(
     status &&
     !['PENDING', 'ACCEPTED', 'DECLINED', 'CANCELLED'].includes(status)
   )
+    return null;
+  if (search && (search.length > 120 || /[\u0000-\u001f]/.test(search)))
     return null;
   return `?${query.toString()}`;
 }
