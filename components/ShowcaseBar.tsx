@@ -1,15 +1,17 @@
 'use client';
 import { useConfirmation } from '@/components/ConfirmationProvider';
 import { useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { useDemo } from './DemoProvider';
 import { post, errorMessage } from '@/lib/booking/client';
 
 export function ShowcaseBar() {
   const { showcase } = useDemo();
+  const pathname = usePathname();
   const confirm = useConfirmation();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  if (!showcase) return null;
+  if (!showcase || pathname.startsWith('/eier')) return null;
   async function reset() {
     if (
       busy ||
@@ -39,7 +41,8 @@ export function ShowcaseBar() {
       <div>
         <strong>Bedriftsdashboard · Demo</strong>
         <span>
-          Ditt eget demoområde · ingen ekte bestillinger, betalinger eller e-post.
+          Ditt eget demoområde · ingen ekte bestillinger, betalinger eller
+          e-post.
         </span>
       </div>
       <nav aria-label="Demoverktøy">

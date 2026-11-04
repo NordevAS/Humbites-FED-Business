@@ -24,11 +24,15 @@ const bedHandlers = {
 };
 function route(method: keyof typeof bedHandlers) {
   return async (request: NextRequest, context: RouteContext) => {
-    if (!isShowcase()) return bedHandlers[method](request, context);
+    const path = (await context.params).path.join('/');
+    // Owner credentials and dashboard data must always come from BED, even if
+    // customer-facing showcase mode is enabled for a preview deployment.
+    if (!isShowcase() || path.startsWith('owner/'))
+      return bedHandlers[method](request, context);
     return handleShowcaseRequest(
       request,
       env as unknown as ShowcaseEnvironment,
-      (await context.params).path.join('/'),
+      path,
     );
   };
 }

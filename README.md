@@ -5,10 +5,10 @@ incoming booking requests, schedules, menus, images, and business settings. The
 root URL opens the dashboard at `/eier`. Customer facing catalogue, profile,
 booking, receipt, and payment pages are not part of this application.
 
-Set `BED_API_URL` to the BED origin without `/v1` and set `SHOWCASE_MODE=false`
-to send dashboard API requests to BED. The server route keeps credentials
-server-side and forwards only the explicitly allowlisted operations. `true`
-keeps the isolated dashboard preview enabled.
+Set `BED_API_URL` to the BED origin without `/v1`. Owner dashboard requests
+always use BED and require the owner's real email and password, even when
+`SHOWCASE_MODE=true` enables the isolated customer-facing preview. Credentials
+stay server-side and the proxy forwards only explicitly allowlisted operations.
 
 BED endpoints needed by the dashboard that are absent or incomplete are listed
 in [BED-INTEGRATION-GAPS.md](./BED-INTEGRATION-GAPS.md). No backend code is
