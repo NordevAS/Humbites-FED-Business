@@ -12,7 +12,7 @@ dashboard flow.
 | --- | --- | --- |
 | Owner sign-in | `GET /v1/auth/csrf`, then `POST /v1/auth/login`; session verification at `GET /v1/auth/login-success` | Login routes exist, but no CSRF route or CSRF middleware is present. The frontend cannot complete its CSRF-protected login handshake. |
 | Dashboard summary | `GET /v1/me/businesses/:businessId/foodtrucks/:foodtruckId/overview` | No route or controller. |
-| Booking settings | `GET` and `PUT /v1/me/businesses/:businessId/foodtrucks/:foodtruckId/booking-settings` | No route or controller. |
+| Booking settings | `GET` and `PATCH /v1/me/businesses/:businessId/foodtrucks/:foodtruckId/booking-settings` | No route or controller. |
 | Schedule | `GET`/`PUT .../schedule` and `GET .../schedule-preview` | No routes or controllers. |
 | Menu read and assignment | `GET .../menu`, `GET .../menu-options`, and category CRUD at `.../menu-categories` | Menu write routes exist, but the truck route has no menu read or menu-options/category routes. The frontend needs categories, allergens, assignments, and item DTOs. |
 | Booking inbox and decisions | `GET .../bookings` with `page`, `limit`, `status`, `q`; booking detail and `POST .../:bookingId/{accept,decline,cancel}` | Routes exist, but list returns an empty stub and detail/decision controllers return placeholder data. Pagination and search are not implemented. |
