@@ -215,6 +215,11 @@ export function TruckLocationForm({
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (busy || resolvingLocation) return;
+    if (fieldsSkeletonTimer.current) {
+      clearTimeout(fieldsSkeletonTimer.current);
+      fieldsSkeletonTimer.current = null;
+    }
+    setFieldsUpdating(false);
     if (!point || !isCoordinates(point)) {
       setError('Søk opp en adresse eller velg et punkt på kartet først.');
       restoreSavedLocation();
