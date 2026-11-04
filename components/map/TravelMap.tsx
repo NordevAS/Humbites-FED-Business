@@ -134,6 +134,8 @@ export function TravelMap({
   const [mapState, setMapState] = useState<
     'loading' | 'ready' | 'unconfigured' | 'error'
   >('loading');
+  const mapStateRef = useRef(mapState);
+  mapStateRef.current = mapState;
   const [mapProvider, setMapProvider] = useState<'mapbox' | 'openstreetmap'>(
     'mapbox',
   );
@@ -157,7 +159,7 @@ export function TravelMap({
   }) => {
     const instance = map.current;
     const gl = library.current;
-    if (!instance || !gl || mapState !== 'ready') return;
+    if (!instance || !gl || mapStateRef.current !== 'ready') return;
     const selected = selectedLocationMarker.current?.getLngLat();
     if (
       selected &&
@@ -215,7 +217,7 @@ export function TravelMap({
   const previewPoint = (point: { longitude: number; latitude: number }) => {
     const instance = map.current;
     const gl = library.current;
-    if (!instance || !gl || mapState !== 'ready') return;
+    if (!instance || !gl || mapStateRef.current !== 'ready') return;
     clearPreviewMarker();
     selectedLocationMarker.current?.remove();
     const element =
