@@ -57,7 +57,7 @@ function createTruckLocationPin() {
   const element = document.createElement('div');
   element.className = styles.truckLocationPin;
   element.setAttribute('aria-label', 'Truckens valgte posisjon');
-  element.innerHTML = `<svg viewBox="0 0 48 60" aria-hidden="true" focusable="false"><path class="${styles.pinShape}" d="M24 1C11.3 1 1 11.3 1 24c0 16 23 34 23 34s23-18 23-34C47 11.3 36.7 1 24 1Z"/><path class="${styles.truckShape}" d="M10 20h19v15H10zM29 25h6l5 6v4H29z"/><circle class="${styles.wheelShape}" cx="16" cy="38" r="3"/><circle class="${styles.wheelShape}" cx="34" cy="38" r="3"/></svg>`;
+  element.innerHTML = `<svg viewBox="0 0 48 60" aria-hidden="true" focusable="false"><path class="${styles.pinShape}" d="M24 1C11.3 1 1 11.3 1 24c0 16 23 34 23 34s23-18 23-34C47 11.3 36.7 1 24 1Z"/><g transform="translate(15 13) scale(.75)" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h12v13H3zM15 10h4l3 4v4h-7M6 8h6v4H6"/><circle cx="7" cy="19" r="2"/><circle cx="18" cy="19" r="2"/></g></svg>`;
   return element;
 }
 async function post<T>(
@@ -158,6 +158,13 @@ export function TravelMap({
     const instance = map.current;
     const gl = library.current;
     if (!instance || !gl || mapState !== 'ready') return;
+    const selected = selectedLocationMarker.current?.getLngLat();
+    if (
+      selected &&
+      selected.lng === point.longitude &&
+      selected.lat === point.latitude
+    )
+      return;
     clearPreviewMarker();
     selectedLocationMarker.current?.remove();
     const element =
@@ -175,7 +182,11 @@ export function TravelMap({
     })
       .setLngLat([point.longitude, point.latitude])
       .addTo(instance);
-    instance.jumpTo({ center: [point.longitude, point.latitude], zoom: 16 });
+    instance.easeTo({
+      center: [point.longitude, point.latitude],
+      zoom: 16,
+      duration: 700,
+    });
   };
   const finishPendingLookup = (pending: boolean, resolved = false) => {
     setLookupPending(pending);
@@ -219,9 +230,10 @@ export function TravelMap({
     previewMarker.current = new gl.Marker({ element, anchor: 'bottom' })
       .setLngLat([point.longitude, point.latitude])
       .addTo(instance);
-    instance.jumpTo({
+    instance.easeTo({
       center: [point.longitude, point.latitude],
       zoom: 16,
+      duration: 700,
     });
   };
   const startPointLookup = (point: { longitude: number; latitude: number }) => {
@@ -444,9 +456,10 @@ export function TravelMap({
       bounds.extend(point);
     }
     if (pendingPoint.current) {
-      instance.jumpTo({
+      instance.easeTo({
         center: [pendingPoint.current.longitude, pendingPoint.current.latitude],
         zoom: 16,
+        duration: 700,
       });
       return;
     }
@@ -465,9 +478,10 @@ export function TravelMap({
       typeof latitude === 'number' &&
       isCoordinates({ longitude, latitude })
     ) {
-      instance.jumpTo({
+      instance.easeTo({
         center: [longitude, latitude],
         zoom: 16,
+        duration: 700,
       });
       return;
     }
