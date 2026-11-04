@@ -1,8 +1,6 @@
 'use client';
 import { useConfirmation } from '@/components/ConfirmationProvider';
-import Link from '@/components/AppLink';
 import { useState } from 'react';
-import { usePathname } from 'next/navigation';
 import { useDemo } from './DemoProvider';
 import { post, errorMessage } from '@/lib/booking/client';
 
@@ -11,7 +9,6 @@ export function ShowcaseBar() {
   const confirm = useConfirmation();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const ownerPage = usePathname() === '/eier';
   if (!showcase) return null;
   async function reset() {
     if (
@@ -40,19 +37,12 @@ export function ShowcaseBar() {
   return (
     <aside className="showcase-bar" aria-label="Demonstrasjon">
       <div>
-        <strong>Prøv hele Humbites</strong>
+        <strong>Bedriftsdashboard · Demo</strong>
         <span>
-          Din egen demo · ingen ekte bestilling, betaling eller e-post. Bruk
-          eksempelopplysninger.
+          Ditt eget demoområde · ingen ekte bestillinger, betalinger eller e-post.
         </span>
       </div>
       <nav aria-label="Demoverktøy">
-        {!ownerPage && (
-          <>
-            <Link href="/mine-foresporsler">Mine demoforespørsler</Link>
-            <Link href="/eier">Åpne eierdemo</Link>
-          </>
-        )}
         <button disabled={busy} onClick={() => void reset()}>
           {busy ? 'Nullstiller …' : 'Start på nytt'}
         </button>

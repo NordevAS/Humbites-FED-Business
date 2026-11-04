@@ -149,9 +149,6 @@ export function OwnerDashboard() {
   const selectedTruck = catalogue.find((item) => item.id === truck);
   const truckName =
     trucks.find((item) => String(item.id) === truck)?.name ?? 'Din foodtruck';
-  const profileHref = selectedTruck
-    ? `/foodtruck/${selectedTruck.slug}`
-    : '/foodtrucks';
   async function loadBusinesses() {
     try {
       const result = await api<{ data: Option[] }>('owner/businesses');
@@ -503,9 +500,6 @@ export function OwnerDashboard() {
         <h1>For truckeiere.</h1>
         <div className="service-state">
           <p>Eierverktøyet krever den tilkoblede bookingtjenesten.</p>
-          <Link href="/" className="text-link">
-            Til kundesiden
-          </Link>
         </div>
       </main>
     );
@@ -564,9 +558,6 @@ export function OwnerDashboard() {
               <p className="owner-subtle">
                 Ingen konto eller passord. Ingen ekte bestilling eller betaling.
               </p>
-              <Link href="/" className="text-link">
-                Tilbake til kundesiden <ArrowUpRight size={17} />
-              </Link>
             </div>
           ) : (
             <form onSubmit={login}>
@@ -610,7 +601,7 @@ export function OwnerDashboard() {
           href="/"
           onClick={(e) => linkGuard(e, '/')}
           className="owner-wordmark"
-          aria-label="Humbites kundeside"
+          aria-label="Humbites bedriftsdashboard"
         >
           humbites<span>.</span>
         </Link>
@@ -644,12 +635,6 @@ export function OwnerDashboard() {
                 : 'Hold truckens opplysninger og kalender oppdatert.'}
             </p>
           </div>
-          <Link
-            href="/mine-foresporsler"
-            onClick={(e) => linkGuard(e, '/mine-foresporsler')}
-          >
-            <ArrowUpRight size={18} /> Kundens kvitteringer
-          </Link>
           <button
             disabled={busy || editorBusy}
             onClick={() => void guard(() => void logout())}
@@ -668,13 +653,6 @@ export function OwnerDashboard() {
               {showcase ? 'Ditt private demoområde' : user.email}
             </span>
           </div>
-          <Link
-            href={profileHref}
-            onClick={(e) => linkGuard(e, profileHref)}
-            className="owner-customer-link"
-          >
-            Se kundesiden <ArrowUpRight size={17} />
-          </Link>
         </header>
         <section className="owner-switcher" aria-label="Velg bedrift og truck">
           <label>
@@ -913,15 +891,6 @@ export function OwnerDashboard() {
                             <CalendarDays size={30} />
                             <h3>Plass til noe godt.</h3>
                             <p>Fremtidige, godkjente bookinger vises her.</p>
-                            <Link
-                              href={profileHref}
-                              className="owner-inline-link"
-                            >
-                              {showcase
-                                ? 'Lag en demoforespørsel'
-                                : 'Se truckens profil'}{' '}
-                              <ArrowRight size={17} />
-                            </Link>
                           </div>
                         )}
                       </section>
@@ -964,18 +933,9 @@ export function OwnerDashboard() {
                             <Inbox size={30} />
                             <h3>Innboksen er klar.</h3>
                             <p>
-                              Lag en forespørsel fra kundesiden og følg hele
-                              veien hit.
+                              Nye kundeforespørsler vises her når
+                              bookingtjenesten er tilkoblet.
                             </p>
-                            <Link
-                              href={profileHref}
-                              className="owner-inline-link"
-                            >
-                              {showcase
-                                ? 'Prøv kundereisen'
-                                : 'Se truckens profil'}{' '}
-                              <ArrowRight size={17} />
-                            </Link>
                           </div>
                         )}
                       </section>
@@ -1107,17 +1067,6 @@ export function OwnerDashboard() {
                             ? 'Prøv et annet navn eller fjern filtrene.'
                             : 'Når en kunde sender en forespørsel til denne trucken, dukker den opp her.'}
                         </p>
-                        {!query && !status && (
-                          <Link
-                            className="button button-primary"
-                            href={profileHref}
-                          >
-                            {showcase
-                              ? 'Lag en demoforespørsel'
-                              : 'Se truckens profil'}{' '}
-                            <ArrowUpRight size={18} />
-                          </Link>
-                        )}
                       </div>
                     ) : (
                       <div className="owner-booking-list">
