@@ -7,40 +7,36 @@ type Photo = {
   status: string;
   sortOrder: number;
   url: string | null;
+  isMain?: boolean;
+  usedInMenu?: boolean;
 };
 type Upload = {
   id: string | number;
-  uploadId: string;
-  uploadToken: string;
   uploadUrl: string;
-  headers: Record<string, string>;
-  expiresAt: string;
+  key: string;
   status: string;
 };
 export async function uploadPhoto(
   path: string,
   file: File,
-  itemId?: string | number,
+  purpose: 'GALLERY' | 'LOGO' = 'GALLERY',
 ) {
   const start = await post<{ data: Upload }>(
-    `${path}/${itemId ? `menu/${itemId}/images` : 'images'}`,
-    { contentType: file.type, contentLength: file.size },
+    `${path}/images`,
+    { contentType: file.type, contentLength: file.size, purpose },
   );
   const url = new URL(start.data.uploadUrl);
-  if (url.origin !== window.location.origin || url.protocol !== 'https:')
+  if (url.protocol !== 'https:' || !url.hostname.endsWith('.r2.cloudflarestorage.com'))
     throw new Error('Opplastingsadressen kunne ikke bekreftes.');
   const sent = await fetch(start.data.uploadUrl, {
     method: 'PUT',
-    headers: { ...start.data.headers, 'Content-Type': file.type },
+    headers: { 'Content-Type': file.type },
     body: file,
-    credentials: 'same-origin',
+    credentials: 'omit',
     referrerPolicy: 'no-referrer',
   });
   if (!sent.ok) throw new Error('Bildet ble ikke lastet opp. Prøv igjen.');
-  await post(
-    `${path}/uploads/${encodeURIComponent(start.data.uploadId)}/complete`,
-    { uploadToken: start.data.uploadToken },
-  );
+  await post(`${path}/images/${start.data.id}/complete`, {});
 }
 export function ImageManager({
   path,
@@ -84,8 +80,8 @@ export function ImageManager({
     if (
       busy ||
       !(await confirm({
-        title: 'Fjerne dette demobildet?',
-        message: 'Bildet fjernes fra trucken i ditt demoområde.',
+        title: 'Slette bildet?',
+        message: 'Bildet slettes fra R2 og fjernes fra truckens galleri.',
         confirmLabel: 'Ja, fjern bildet',
       }))
     )
@@ -104,11 +100,9 @@ export function ImageManager({
   }
   return (
     <section className="service-card">
-      <h2>Truckbilder</h2>
+      <h2>Hovedbilde</h2>
       <p>
-        Last opp et eksempelbilde du har rett til å bruke (JPEG, PNG eller WebP,
-        maks 5 MB). Det vises bare i ditt demoområde og fjernes når demoen
-        nullstilles.
+        Velg hvilket bilde som vises først på den offentlige profilen.
       </p>
       {error && (
         <div className="service-banner error" role="alert">
@@ -120,6 +114,15 @@ export function ImageManager({
           {notice}
         </div>
       )}
+      {photos.find((photo) => photo.isMain)?.url ? (
+        <div className="service-card">
+          <img src={photos.find((photo) => photo.isMain)?.url ?? ''} alt="Hovedbilde" style={{ width: '100%', maxWidth: 640, aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: 12 }} />
+          <p>Dette bildet er valgt som hovedbilde.</p>
+          <button type="button" className="text-link" disabled={busy} onClick={() => void api(`${path}/images/main`, { method: 'DELETE', body: '{}' }).then(refresh).then(onSaved).catch((e) => setError(errorMessage(e)))}>Fjern hovedbildet</button>
+        </div>
+      ) : <p>Ingen hovedbilde valgt.</p>}
+      <h2>Bildegalleri</h2>
+      <p>Bildene kan også brukes på menyretter uten å lastes opp på nytt.</p>
       <div className="truck-grid">
         {photos.map((photo) => (
           <article key={photo.id}>
@@ -133,17 +136,16 @@ export function ImageManager({
               />
             )}
             <p>
-              {photo.status === 'COMPLETED'
-                ? 'Lagret demobilde'
-                : 'Opplasting ikke fullført'}
+              {photo.isMain ? 'Hovedbilde' : photo.usedInMenu ? 'Brukes i menyen' : 'I galleriet'}
             </p>
             <button
               className="text-link"
               disabled={busy}
-              onClick={() => void remove(photo)}
+              onClick={() => void (photo.isMain ? api(`${path}/images/main`, { method: 'DELETE', body: '{}' }).then(refresh).then(onSaved) : remove(photo)).catch((e) => setError(errorMessage(e)))}
             >
-              Fjern bilde
+              {photo.isMain ? 'Fjern som hovedbilde' : 'Fjern bilde'}
             </button>
+            {!photo.isMain && <button type="button" className="button button-secondary" disabled={busy} onClick={() => void api(`${path}/images/${photo.id}/main`, { method: 'PATCH', body: '{}' }).then(refresh).then(onSaved).catch((e) => setError(errorMessage(e)))}>Bruk som hovedbilde</button>}
           </article>
         ))}
       </div>

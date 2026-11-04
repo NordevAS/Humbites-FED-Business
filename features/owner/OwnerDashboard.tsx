@@ -49,6 +49,7 @@ import { TruckLocationForm } from './TruckLocationForm';
 import { OpeningHoursEditor } from './OpeningHoursEditor';
 import { MenuEditor, type OwnerItem } from './MenuEditor';
 import { ImageManager } from './ImageManager';
+import { TruckLogoManager } from './TruckLogoManager';
 import {
   paymentLabel,
   canCapture,
@@ -68,6 +69,7 @@ type Option = {
   country?: string | null;
   latitude?: number | string | null;
   longitude?: number | string | null;
+  logoUrl?: string | null;
 };
 type User = { id: string | number; email: string; firstName?: string };
 type Tab = 'overview' | 'inbox' | 'calendar' | 'menu' | 'images' | 'settings';
@@ -1224,6 +1226,16 @@ export function OwnerDashboard() {
                 )}
                 {tab === 'settings' && (
                   <>
+                    <TruckLogoManager
+                      key={`${base}-logo`}
+                      path={`${base}/media`}
+                      logoUrl={trucks.find((item) => String(item.id) === truck)?.logoUrl}
+                      onSaved={async () => {
+                        const result = await api<{ data: Option[] }>(`owner/businesses/${business}/trucks`);
+                        setTrucks(result.data);
+                        await reloadCatalogue();
+                      }}
+                    />
                     <TruckLocationForm
                       key={`${base}-location`}
                       path={base}

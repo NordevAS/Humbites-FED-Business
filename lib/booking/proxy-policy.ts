@@ -32,17 +32,21 @@ export function resolveTarget(method: string, path: string): Target | null {
   if (method === 'GET' && path === 'owner/businesses')
     return { path: 'me/businesses', auth: 'owner' };
   const media = path.match(
-    /^owner\/businesses\/(\d+)\/trucks\/(\d+)\/media\/(images(?:\/\d+)?|menu\/\d+\/images|uploads\/[A-Za-z0-9_-]+\/complete)$/,
+    /^owner\/businesses\/(\d+)\/trucks\/(\d+)\/media\/(images(?:\/main|\/\d+(?:\/(?:main|complete))?)?|logo|menu\/\d+\/images|uploads\/[A-Za-z0-9_-]+\/complete)$/,
   );
   if (
     media &&
     ((media[3] === 'images' && ['GET', 'POST'].includes(method)) ||
       (/^images\/\d+$/.test(media[3]) && method === 'DELETE') ||
+      (/^images\/\d+\/main$/.test(media[3]) && method === 'PATCH') ||
+      (media[3] === 'images/main' && method === 'DELETE') ||
+      (/^images\/\d+\/complete$/.test(media[3]) && method === 'POST') ||
+      (media[3] === 'logo' && method === 'DELETE') ||
       ((media[3].startsWith('menu/') || media[3].startsWith('uploads/')) &&
         method === 'POST'))
   )
     return {
-      path: `media/businesses/${media[1]}/foodtrucks/${media[2]}/${media[3]}`,
+      path: `me/businesses/${media[1]}/foodtrucks/${media[2]}/${media[3]}`,
       auth: 'owner',
     };
   const payment = path.match(
