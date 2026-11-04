@@ -27,6 +27,7 @@
   }
 }
 .searchControl {
+  position: relative;
   display: flex;
   flex: 1;
   align-items: center;
@@ -40,16 +41,23 @@
   min-width: 0;
   align-items: center;
 }
+.searchControl > label > span {
+  padding-right: 48px;
+}
 .locationButton {
+  position: absolute;
+  z-index: 2;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
   display: grid;
   place-items: center;
-  flex: 0 0 44px;
-  width: 44px;
-  height: 44px;
-  padding: 8px;
-  border: 1px solid var(--control-line, #94806f);
+  width: 36px;
+  height: 36px;
+  padding: 6px;
+  border: 0;
   border-radius: 50%;
-  background: var(--surface, #fff);
+  background: transparent;
   color: var(--action, #bf4927);
   cursor: pointer;
 }
@@ -61,8 +69,8 @@
   opacity: 0.65;
 }
 .locationButton svg {
-  width: 25px;
-  height: 25px;
+  width: 24px;
+  height: 24px;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.8;
@@ -70,12 +78,7 @@
   stroke-linejoin: round;
 }
 .locationButtonBusy svg {
-  animation: crosshair-spin 1.2s linear infinite;
-}
-@keyframes crosshair-spin {
-  to {
-    transform: rotate(180deg);
-  }
+  opacity: 0.55;
 }
 .popup {
   position: absolute;
@@ -139,10 +142,4 @@
 }
 .field .searchControl input {
   width: 100%;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .locationButtonBusy svg {
-    animation: none;
-  }
 }

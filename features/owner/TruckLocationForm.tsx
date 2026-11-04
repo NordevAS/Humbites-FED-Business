@@ -282,8 +282,8 @@ export function TruckLocationForm({
         compact
       />
       <div
-        className={`form-grid ${styles.fields} ${busy || resolvingLocation ? styles.fieldsLoading : ''} ${fieldsUpdating ? styles.fieldsUpdating : ''}`}
-        aria-busy={busy || resolvingLocation}
+        className={`form-grid ${styles.fields} ${busy || resolvingLocation || fieldsUpdating ? styles.fieldsLoading : ''}`}
+        aria-busy={busy || resolvingLocation || fieldsUpdating}
       >
         <label className="field">
           <span>Adresse</span>

@@ -163,18 +163,15 @@ export function TravelMap({
     if (!instance || !gl || mapState !== 'ready') return;
     clearPreviewMarker();
     const element = document.createElement('div');
-    element.className = `${styles.eventMarker} ${styles.pendingMarker}`;
+    element.className = styles.eventMarker;
     element.textContent = '●';
     element.setAttribute('aria-label', 'Ny posisjon som kontrolleres');
     previewMarker.current = new gl.Marker({ element, anchor: 'bottom' })
       .setLngLat([point.longitude, point.latitude])
       .addTo(instance);
-    instance.flyTo({
+    instance.jumpTo({
       center: [point.longitude, point.latitude],
       zoom: 16,
-      duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches
-        ? 0
-        : 350,
     });
   };
   const startPointLookup = (point: { longitude: number; latitude: number }) => {
@@ -393,12 +390,9 @@ export function TravelMap({
       bounds.extend(point);
     }
     if (pendingPoint.current) {
-      instance.flyTo({
+      instance.jumpTo({
         center: [pendingPoint.current.longitude, pendingPoint.current.latitude],
         zoom: 16,
-        duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches
-          ? 0
-          : 350,
       });
       return;
     }
@@ -427,12 +421,9 @@ export function TravelMap({
       typeof latitude === 'number' &&
       isCoordinates({ longitude, latitude })
     ) {
-      instance.flyTo({
+      instance.jumpTo({
         center: [longitude, latitude],
         zoom: 16,
-        duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches
-          ? 0
-          : 500,
       });
       return;
     }
@@ -607,23 +598,21 @@ export function TravelMap({
           {reverseMessage}
         </p>
       )}
-      <p className={styles.caption}>
-        {mapProvider === 'openstreetmap' ? (
-          <a href="https://www.openstreetmap.org/copyright">
-            © OpenStreetMap-bidragsytere
-          </a>
-        ) : (
-          <a href="https://www.mapbox.com/about/maps/">© Mapbox</a>
-        )}
-        {reverseProvider === 'osm' ? null : (
-          <>
-            {' · adresse © '}
-            <a href="https://www.kartverket.no/api-og-data/eiendomsdata/brukarrettleiing-adresse-api">
-              Kartverket
+      {reverseProvider !== 'osm' && (
+        <p className={styles.caption}>
+          {mapProvider === 'openstreetmap' ? (
+            <a href="https://www.openstreetmap.org/copyright">
+              © OpenStreetMap-bidragsytere
             </a>
-          </>
-        )}
-      </p>
+          ) : (
+            <a href="https://www.mapbox.com/about/maps/">© Mapbox</a>
+          )}
+          {' · adresse © '}
+          <a href="https://www.kartverket.no/api-og-data/eiendomsdata/brukarrettleiing-adresse-api">
+            Kartverket
+          </a>
+        </p>
+      )}
       {reverseProvider !== 'osm' && (
         <>
           <p id={`${fieldId}-map-help`} className={styles.caption}>

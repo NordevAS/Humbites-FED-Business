@@ -84,37 +84,6 @@
   margin: 0;
   padding: 12px 20px;
 }
-.mapActions {
-  display: flex;
-  justify-content: flex-end;
-  padding: 0 18px 12px;
-}
-.locateButton {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid var(--control-line, #94806f);
-  border-radius: 999px;
-  padding: 9px 14px;
-  background: var(--surface, #fff);
-  color: var(--ink, #261c16);
-  font: inherit;
-  font-weight: 650;
-  cursor: pointer;
-}
-.locateButton:hover:not(:disabled) {
-  border-color: var(--action, #bf4927);
-  color: var(--action, #bf4927);
-}
-.locateButton:disabled {
-  cursor: wait;
-  opacity: 0.7;
-}
-.locateButton span {
-  color: var(--action, #bf4927);
-  font-size: 1.2rem;
-  line-height: 1;
-}
 .travel {
   padding: 0 20px 16px;
 }
@@ -180,28 +149,9 @@
   background: #7445b7;
   font-size: 15px;
 }
-.pendingMarker {
-  background: #bf4927;
-  animation: pending-pin 1s ease-in-out infinite;
-  z-index: 2;
-}
-@keyframes pending-pin {
-  0%,
-  100% {
-    transform: scale(1);
-    box-shadow: 0 2px 10px #261c1630;
-  }
-  50% {
-    transform: scale(1.22);
-    box-shadow: 0 0 0 9px #bf492740;
-  }
-}
 @media (max-width: 500px) {
   .searchArea {
     padding: 16px;
-  }
-  .mapActions {
-    padding-inline: 14px;
   }
   .mapFrame {
     height: 280px;
@@ -217,11 +167,5 @@
   }
   .journeys li {
     gap: 8px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pendingMarker {
-    animation: none;
   }
 }
