@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Coordinates, EventLocation } from '@/domain';
 import { isCoordinates } from '@/domain';
-import { PlaceAutocomplete } from '@/features/discovery/PlaceAutocomplete';
 import { TravelMap } from '@/components/map/TravelMap';
 import { api, errorMessage } from '@/lib/booking/client';
 import styles from './TruckLocationForm.module.css';
@@ -273,19 +272,12 @@ export function TruckLocationForm({
           {error}
         </div>
       )}
-      <PlaceAutocomplete
-        variant="field"
-        label="Søk etter adresse eller sted"
-        location={location}
-        onChange={chooseLocation}
-        showPresets={false}
-        searchProvider="osm"
-      />
       <TravelMap
         location={location}
         onLocationChange={chooseLocation}
-        showLocationSearch={false}
+        showLocationSearch
         reverseProvider="osm"
+        searchProvider="osm"
         onLocationLookupPending={setResolvingLocation}
         compact
       />

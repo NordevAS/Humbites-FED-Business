@@ -25,6 +25,7 @@ export interface TravelMapProps {
   compact?: boolean;
   showLocationSearch?: boolean;
   reverseProvider?: 'kartverket' | 'osm';
+  searchProvider?: 'kartverket' | 'osm';
   onLocationLookupPending?: (pending: boolean) => void;
 }
 
@@ -93,6 +94,7 @@ export function TravelMap({
   compact = false,
   showLocationSearch = true,
   reverseProvider = 'kartverket',
+  searchProvider = 'kartverket',
   onLocationLookupPending,
 }: TravelMapProps) {
   const { showcase } = useDemo();
@@ -107,6 +109,7 @@ export function TravelMap({
   );
   const [reverseMessage, setReverseMessage] = useState('');
   const [locating, setLocating] = useState(false);
+  const [lookupPending, setLookupPending] = useState(false);
   const pendingPoint = useRef<EventLocation['coordinates']>(undefined);
   const previewMarker = useRef<mapboxgl.Marker | null>(null);
   const locationAction = useRef(0);
@@ -139,6 +142,7 @@ export function TravelMap({
     previewMarker.current = null;
   };
   const finishPendingLookup = (pending: boolean) => {
+    setLookupPending(pending);
     onLocationLookupPendingRef.current?.(pending);
     if (!pending) {
       pendingPoint.current = undefined;
@@ -167,7 +171,7 @@ export function TravelMap({
       .addTo(instance);
     instance.flyTo({
       center: [point.longitude, point.latitude],
-      zoom: Math.max(instance.getZoom(), 13),
+      zoom: 16,
       duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches
         ? 0
         : 350,
@@ -302,9 +306,10 @@ export function TravelMap({
           cooperativeGestures: false,
         });
         // Wheel/trackpad and pinch zoom are primary gestures; controls remain a keyboard-accessible alternative.
-        instance
-          .getCanvas()
-          .setAttribute('aria-describedby', `${fieldId}-map-help`);
+        if (reverseProvider !== 'osm')
+          instance
+            .getCanvas()
+            .setAttribute('aria-describedby', `${fieldId}-map-help`);
         map.current = instance;
         instance.addControl(
           new gl.NavigationControl({ showCompass: false }),
@@ -360,6 +365,8 @@ export function TravelMap({
     const instance = map.current;
     const gl = library.current;
     if (!instance || !gl || mapState !== 'ready') return;
+    if (pendingPoint.current && !previewMarker.current)
+      previewPoint(pendingPoint.current);
     for (const marker of markers.current) marker.remove();
     markers.current = [];
     const bounds = new gl.LngLatBounds();
@@ -385,6 +392,16 @@ export function TravelMap({
       );
       bounds.extend(point);
     }
+    if (pendingPoint.current) {
+      instance.flyTo({
+        center: [pendingPoint.current.longitude, pendingPoint.current.latitude],
+        zoom: 16,
+        duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          ? 0
+          : 350,
+      });
+      return;
+    }
     if (
       typeof longitude === 'number' &&
       typeof latitude === 'number' &&
@@ -403,6 +420,22 @@ export function TravelMap({
       );
       bounds.extend([longitude, latitude]);
     }
+    if (
+      onLocationChange &&
+      compact &&
+      typeof longitude === 'number' &&
+      typeof latitude === 'number' &&
+      isCoordinates({ longitude, latitude })
+    ) {
+      instance.flyTo({
+        center: [longitude, latitude],
+        zoom: 16,
+        duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          ? 0
+          : 500,
+      });
+      return;
+    }
     if (!bounds.isEmpty())
       instance.fitBounds(bounds, {
         padding: 60,
@@ -411,7 +444,7 @@ export function TravelMap({
           ? 0
           : 400,
       });
-  }, [catalogue, mapState, longitude, latitude]);
+  }, [catalogue, mapState, longitude, latitude, location?.label]);
 
   useEffect(() => {
     const instance = map.current;
@@ -509,25 +542,12 @@ export function TravelMap({
           <PlaceAutocomplete
             location={location ?? { label: '', source: 'manual' }}
             onChange={changeLocation}
+            searchProvider={searchProvider}
+            onUseMyLocation={
+              reverseProvider === 'osm' ? useMyPosition : undefined
+            }
+            locating={locating || lookupPending}
           />
-        </div>
-      )}
-
-      {onLocationChange && reverseProvider === 'osm' && (
-        <div className={styles.mapActions}>
-          <button
-            type="button"
-            className={styles.locateButton}
-            onClick={useMyPosition}
-            disabled={locating || mapState !== 'ready'}
-          >
-            <span aria-hidden="true">◎</span>
-            {locating
-              ? 'Finner posisjonen …'
-              : mapState !== 'ready'
-                ? 'Venter på kartet …'
-                : 'Bruk min posisjon'}
-          </button>
         </div>
       )}
 
@@ -574,7 +594,7 @@ export function TravelMap({
             </strong>
             <span>
               {mapState === 'loading'
-                ? 'Henter kart fra Mapbox.'
+                ? 'Laster kartdata.'
                 : mapState === 'unconfigured'
                   ? 'Du kan fortsatt søke etter adressen, men kartvalg krever at karttjenesten konfigureres.'
                   : 'Kontroller internettforbindelsen og prøv igjen. Du kan fortsatt søke etter en adresse.'}
@@ -588,38 +608,38 @@ export function TravelMap({
         </p>
       )}
       <p className={styles.caption}>
-        Kartdata fra{' '}
         {mapProvider === 'openstreetmap' ? (
           <a href="https://www.openstreetmap.org/copyright">
-            OpenStreetMap-bidragsytere
+            © OpenStreetMap-bidragsytere
           </a>
         ) : (
-          <a href="https://www.mapbox.com/about/maps/">Mapbox</a>
+          <a href="https://www.mapbox.com/about/maps/">© Mapbox</a>
         )}
-        . Adresse hentes fra{' '}
-        <a
-          href={
-            reverseProvider === 'osm'
-              ? 'https://www.openstreetmap.org/copyright'
-              : 'https://www.kartverket.no/api-og-data/eiendomsdata/brukarrettleiing-adresse-api'
-          }
-        >
-          {reverseProvider === 'osm' ? 'OpenStreetMap' : 'Kartverket'}
-        </a>
-        . Markøren viser alltid punktet du valgte.
+        {reverseProvider === 'osm' ? null : (
+          <>
+            {' · adresse © '}
+            <a href="https://www.kartverket.no/api-og-data/eiendomsdata/brukarrettleiing-adresse-api">
+              Kartverket
+            </a>
+          </>
+        )}
       </p>
-      <p id={`${fieldId}-map-help`} className={styles.caption}>
-        Zoom med musehjul eller styreflate, eller knip med to fingre. Bla
-        utenfor kartet for å rulle videre på siden.
-      </p>
-      <p className={styles.caption}>
-        {showcase
-          ? 'Truckene og basene er eksempler. Kart, kjørerute og reisetid beregnes av Mapbox når tjenesten er tilgjengelig.'
-          : 'Truckenes posisjoner er registrerte baser, ikke sanntidsplasseringer.'}
-        {mapState === 'ready' && onLocationChange
-          ? ' Du kan også velge sted i kartet.'
-          : ''}
-      </p>
+      {reverseProvider !== 'osm' && (
+        <>
+          <p id={`${fieldId}-map-help`} className={styles.caption}>
+            Zoom med musehjul eller styreflate, eller knip med to fingre. Bla
+            utenfor kartet for å rulle videre på siden.
+          </p>
+          <p className={styles.caption}>
+            {showcase
+              ? 'Truckene og basene er eksempler. Kart, kjørerute og reisetid beregnes av Mapbox når tjenesten er tilgjengelig.'
+              : 'Truckenes posisjoner er registrerte baser, ikke sanntidsplasseringer.'}
+            {mapState === 'ready' && onLocationChange
+              ? ' Du kan også velge sted i kartet.'
+              : ''}
+          </p>
+        </>
+      )}
 
       <div aria-live="polite" className={styles.travel}>
         {catalogue.length > 24 && (

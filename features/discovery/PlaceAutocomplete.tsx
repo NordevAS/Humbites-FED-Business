@@ -23,6 +23,8 @@ export function PlaceAutocomplete({
   inputProps = {},
   showPresets = true,
   searchProvider = 'kartverket',
+  onUseMyLocation,
+  locating = false,
 }: {
   location: EventLocation;
   onChange: (location: EventLocation) => void;
@@ -36,6 +38,8 @@ export function PlaceAutocomplete({
   >;
   showPresets?: boolean;
   searchProvider?: 'kartverket' | 'osm';
+  onUseMyLocation?: () => void;
+  locating?: boolean;
 }) {
   const generatedId = useId();
   const id = inputProps.id ?? generatedId;
@@ -117,53 +121,84 @@ export function PlaceAutocomplete({
         if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
       }}
     >
-      <label
-        className={
-          variant === 'field' ? 'field' : 'search-field location-field'
-        }
-        htmlFor={id}
-      >
-        {variant === 'search' && <Icon name="pin" />}
-        <span>
-          <span className={variant === 'search' ? 'field-caption' : undefined}>
-            {label}
-            {required && <b> *</b>}
+      <div className={styles.searchControl}>
+        <label
+          className={
+            variant === 'field' ? 'field' : 'search-field location-field'
+          }
+          htmlFor={id}
+        >
+          {variant === 'search' && <Icon name="pin" />}
+          <span>
+            <span
+              className={variant === 'search' ? 'field-caption' : undefined}
+            >
+              {label}
+              {required && <b> *</b>}
+            </span>
+            <input
+              {...inputProps}
+              id={id}
+              name="place"
+              autoComplete="off"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded={open}
+              aria-controls={`${id}-suggestions`}
+              aria-activedescendant={
+                open && active >= 0 && active < suggestions.length
+                  ? `${id}-option-${active}`
+                  : undefined
+              }
+              aria-describedby={[inputProps['aria-describedby'], `${id}-hint`]
+                .filter(Boolean)
+                .join(' ')}
+              aria-label={variant === 'search' ? 'Sted eller by' : undefined}
+              placeholder={
+                searchProvider === 'osm'
+                  ? 'Søk etter adresse eller sted i hele verden'
+                  : 'Søk etter adresse eller by i Norge'
+              }
+              maxLength={180}
+              value={location.label}
+              onFocus={() => setOpen(true)}
+              onKeyDown={navigate}
+              onChange={(event) => {
+                onChange({ label: event.target.value, source: 'manual' });
+                setOpen(true);
+                setActive(-1);
+              }}
+            />
           </span>
-          <input
-            {...inputProps}
-            id={id}
-            name="place"
-            autoComplete="off"
-            role="combobox"
-            aria-autocomplete="list"
-            aria-expanded={open}
-            aria-controls={`${id}-suggestions`}
-            aria-activedescendant={
-              open && active >= 0 && active < suggestions.length
-                ? `${id}-option-${active}`
-                : undefined
-            }
-            aria-describedby={[inputProps['aria-describedby'], `${id}-hint`]
-              .filter(Boolean)
-              .join(' ')}
-            aria-label={variant === 'search' ? 'Sted eller by' : undefined}
-            placeholder={
-              searchProvider === 'osm'
-                ? 'Søk etter adresse eller sted i hele verden'
-                : 'Søk etter adresse eller by i Norge'
-            }
-            maxLength={180}
-            value={location.label}
-            onFocus={() => setOpen(true)}
-            onKeyDown={navigate}
-            onChange={(event) => {
-              onChange({ label: event.target.value, source: 'manual' });
-              setOpen(true);
+        </label>
+        {onUseMyLocation && (
+          <button
+            type="button"
+            className={styles.locationButton}
+            onClick={() => {
+              setOpen(false);
               setActive(-1);
+              onUseMyLocation();
             }}
-          />
-        </span>
-      </label>
+            disabled={locating}
+            aria-label={
+              locating ? 'Posisjonsoppslag pågår' : 'Bruk min posisjon'
+            }
+            title={locating ? 'Posisjonsoppslag pågår' : 'Bruk min posisjon'}
+          >
+            <svg
+              viewBox="0 0 32 32"
+              aria-hidden="true"
+              className={locating ? styles.locationButtonBusy : undefined}
+            >
+              <circle cx="16" cy="16" r="8.5" />
+              <circle cx="16" cy="16" r="3" />
+              <path d="M16 2v6m0 16v6M2 16h6m16 0h6" />
+              <path d="m9.5 9.5 2.1 2.1m8.8 8.8 2.1 2.1m0-13-2.1 2.1m-8.8 8.8-2.1 2.1" />
+            </svg>
+          </button>
+        )}
+      </div>
       <span id={`${id}-hint`} className="sr-only">
         {searchProvider === 'osm'
           ? 'Skriv minst tre tegn for adressesøk basert på OpenStreetMap. Velg et forslag med piltastene og Enter, eller velg et kartpunkt.'
