@@ -84,6 +84,9 @@
   gap: 20px;
   align-items: start;
 }
+.schedule-main-column {
+  min-width: 0;
+}
 .schedule-card {
   border: 1.5px solid var(--schedule-ink);
   border-radius: 16px;
@@ -480,7 +483,7 @@
   background: #c73535;
 }
 .special-dot {
-  background: #b06e22;
+  background: #d2a500;
 }
 .schedule-day-detail {
   background: #f6e9d7;
